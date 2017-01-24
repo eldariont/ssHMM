@@ -13,14 +13,24 @@ ssHMM consists of 3 main scripts:
 
 ### Installation
 
+We distribute ssHMM both as a Python package and as a Docker image (similar to a virtual machine). The Docker image has already all dependencies installed and is much easier to use. When using the Python package, all dependencies have to be installed manually.
 
-#### Prerequisites:
+#### Installation via Docker
+
+1.  Install Docker on your platform as described on https://docs.docker.com/engine/getstarted/
+2.  Run Docker and check whether everything is working: ```docker version```
+3.  Run ```docker run -t -i -v hellerd/sshmm```. This will download the Docker image containing ssHMM (if you have not yet downloaded it) and will run it. Once the image has been started, you can access it via a command line interface. You can now run ssHMM, e.g. by typing ```train_seqstructhmm --help```. You can exit the image with ```exit```.
+4.  To access data located on your machine (e.g. in ```/home/someuser/data```) from inside the image, use the ```-v``` option: ```docker run -t -i -v /home/someuser/data:/data hellerd/sshmm```. This will make your available inside the image in the ```/data``` directory. You can now run ssHMM on this data, e.g. ```train_seqstructhmm /data/sequences.fasta /data/shapes.txt```.
+
+#### Installation as a Python package
+
+##### Prerequisites:
 - GHMM (http://ghmm.org/)
 - GraphViz (http://www.graphviz.org/)
 - RNAshapes (http://bibiserv.techfak.uni-bielefeld.de/rnashapes)
 - RNAstructure (http://rna.urmc.rochester.edu/rnastructure.html)
 
-#### Installation steps:
+##### Installation steps:
 
 1.  Install prerequisites for GHMM as described on http://ghmm.sourceforge.net/installation.html. The commands for Ubuntu are:
   
