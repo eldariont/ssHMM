@@ -1,7 +1,7 @@
 from collections import defaultdict
 import random, re
 
-def readSequencesAndShapes(sequencePath, shapePath, motifLength, logger):
+def readSequencesAndShapes(sequencePath, shapePath, motifLength, logger, onlyBestShape = False):
     """Reads sequences and shapes from given FASTA files and returns them as a SequenceContainer object.
     """
     sequenceFile = open(sequencePath, 'r')
@@ -14,7 +14,7 @@ def readSequencesAndShapes(sequencePath, shapePath, motifLength, logger):
     uppercasePattern = re.compile("[A-Z]+")
 
     for i in xrange(len(sequenceLines)/2):
-        id = sequenceLines[i*2].split()[0]
+        id = sequenceLines[i*2].split()[0][1:]
         readSequence = sequenceLines[i*2+1].strip()
         sequenceWindow = uppercasePattern.search(readSequence)
         if sequenceWindow:
@@ -36,9 +36,11 @@ def readSequencesAndShapes(sequencePath, shapePath, motifLength, logger):
     for line in shapeLines:
         if line[0] == '>':
             #id line
-            currentID = line.strip()
+            currentID = line.strip()[1:]
         else:
             if sequenceContainer.contains_id(currentID):
+                if onlyBestShape and ('shapes' in sequenceContainer.container[currentID]) and len(sequenceContainer.get_full_shapes_for_id(currentID)) > 0:
+                    continue
                 (start, stop) = sequenceContainer.get_boundaries_for_id(currentID)
                 fields = line.strip().split()
                 sequenceContainer.add_shape_with_id(fields[0][start:stop], float(fields[1]), currentID)
