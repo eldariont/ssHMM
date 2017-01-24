@@ -7,12 +7,11 @@ import itertools
 import os
 import random
 import sys
-import logging
 
 from sshmm.sequence_container import readSequencesAndShapes
 from sshmm.seqstructhmm import SeqStructHMM
 from sshmm import seq_hmm
-
+from sshmm.log import prepareLogger
 
 def parseArguments(args):
     """Sets up the command-line parser and calls it on the command-line arguments to the program.
@@ -38,27 +37,8 @@ def parseArguments(args):
     return parser.parse_args()
 
 
-def prepareLogger(name, loggerFile, verbose = False, stdout = False):
-    newLogger = logging.getLogger(name)
-
-    if stdout:
-        stdoutHandler = logging.StreamHandler(sys.stdout)
-        if verbose:
-            fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            stdoutHandler.setFormatter(fmt)
-        newLogger.addHandler(stdoutHandler)
-
-    fileHandler = logging.FileHandler(loggerFile)
-    if verbose:
-        fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        fileHandler.setFormatter(fmt)
-    newLogger.addHandler(fileHandler)
-    newLogger.setLevel(logging.INFO)
-
-    return newLogger
-
 def do_training_for_configuration(data_directory, batch_directory, protein, structure_type, motif_length, flexibility, sample_size, output_interval, termination_criterion):
-    job_directory = '{0}/jobs/{1}_{2}_{3}'.format(batch_directory, protein, structure_type, motif_length)
+    job_directory = '{0}/jobs/{1}_{2}_ml{3}_fl{4}_ss{5}_oi{6}_tc{7}'.format(batch_directory, protein, structure_type, motif_length, flexibility, sample_size, output_interval, termination_criterion)
     os.mkdir(job_directory)
 
     #see http://stackoverflow.com/questions/9209078/using-python-multiprocessing-with-different-random-seed-for-each-process
@@ -73,13 +53,23 @@ def do_training_for_configuration(data_directory, batch_directory, protein, stru
     main_logger.info('Read %s training sequences', training_sequence_container.get_length())
 
     best_baumwelch_sequence_models = seq_hmm.find_best_baumwelch_sequence_models(motif_length, training_sequence_container, main_logger)
-    best_viterbi_paths = best_baumwelch_sequence_models[0][2]
+    best_viterbi_paths = best_baumwelch_sequence_models[1]
 
     model0 = SeqStructHMM(0, job_directory, main_logger, numbers_logger, training_sequence_container, motif_length, flexibility, sample_size)
     model0.prepare_model_with_viterbi(best_viterbi_paths)
 
-    key_statistics, pwm_global = model0.do_training(output_interval, termination_criterion, write_model_state=True)
+    model0.do_training(output_interval, termination_criterion, write_model_state=True)
 
+    pwm_global = model0.get_pwm_global()
+    pwm_global.write_to_file(job_directory + 'recovered_pwm_global.txt')
+    pwm_global.write_weblogo(job_directory + 'recovered_pwm_global.png')
+
+    pwm_best_sequences = model0.get_pwm_best_sequences()
+    pwm_best_sequences.write_to_file(job_directory + 'recovered_pwm_best_sequences.txt')
+    pwm_best_sequences.write_weblogo(job_directory + 'recovered_pwm_best_sequences.png')
+
+    model0.model.printAsGraph(job_directory + 'model_at_end.png', model0.sequence_container.get_length())
+    model0.model.write(job_directory + 'model_at_end.xml')
     return [protein, structure_type, motif_length, flexibility, sample_size, output_interval, termination_criterion] + key_statistics
 
 
@@ -110,12 +100,12 @@ def main(args):
                                 )
 
     proteins = options.proteins.split()
-    motif_lengths = [6]
+    motif_lengths = [4,5,6,7,8]
     structure_types = ['shapes']
-    flexibilities = [0, 1, 3, 10]
-    sample_sizes = [1, 5, 10, 100]
-    output_interval = [100, 500]
-    termination_criterion = [10, 50]
+    flexibilities = [0, 10]
+    sample_sizes = [1]
+    output_interval = [100]
+    termination_criterion = [10]
 
     parameterCombinations = itertools.product([options.data_directory], [batch_directory], proteins, structure_types,
                                               motif_lengths, flexibilities, sample_sizes, output_interval, termination_criterion)

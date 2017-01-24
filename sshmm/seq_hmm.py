@@ -2,7 +2,7 @@ from MyHMM import DiscreteDistribution, HMMFromMatrices, Alphabet, SequenceSet, 
 
 import random
 import logging
-
+import itertools
 
 class HMMOption:
     def __init__(self):
@@ -98,13 +98,14 @@ def find_best_baumwelch_sequence_models(motif_length, sequence_container, logger
         trainingSequencesWithEndSymbol = [sequence + '#' for sequence in trainingSequences]
         trainingSequenceSet = SequenceSet(extendedAlphabet,trainingSequencesWithEndSymbol)
 
-        loglikelihoods = []
+        best_loglikelihood = None
+        best_viterbi_paths = None
         for index in xrange(num_models):
-            cur_sequence_model = generate_sequence_hmm(sequence_container.get_average_sequence_length(),
-                                                                  extendedAlphabet, options)
+            cur_sequence_model = generate_sequence_hmm(sequence_container.get_average_sequence_length(), extendedAlphabet, options)
             cur_sequence_model.baumWelch(trainingSequenceSet)
             cur_loglikelihood = cur_sequence_model.loglikelihood(trainingSequenceSet)
-            cur_viterbi_paths = cur_sequence_model.viterbi(trainingSequenceSet)[0]
-            loglikelihoods.append((cur_loglikelihood, cur_sequence_model, cur_viterbi_paths))
-
-        return sorted(loglikelihoods, key=lambda triple: triple[0], reverse=True)
+            if best_loglikelihood == None or cur_loglikelihood > best_loglikelihood:
+                best_viterbi_paths = cur_sequence_model.viterbi(trainingSequenceSet)[0]
+                best_loglikelihood = cur_loglikelihood
+        logger.info('Found sequence motif.')
+        return (best_loglikelihood, best_viterbi_paths)

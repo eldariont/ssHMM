@@ -4,11 +4,12 @@ import datetime
 import argparse
 import sys
 import os
-import logging
+from collections import Counter
 
 from sshmm import seq_hmm
 from sshmm.seqstructhmm import SeqStructHMM
 from sshmm.sequence_container import readSequencesAndShapes
+from sshmm.log import prepareLogger
 
 def parseArguments(args):
     """Sets up the command-line parser and calls it on the command-line arguments to the program.
@@ -17,7 +18,7 @@ def parseArguments(args):
     args -- command-line arguments to the program"""
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description='Trains a Hidden Markov Model for the sequence-structure binding '
-                                                 'preferences of an RNA-binding protein. The model is trained on '
+                                                 'preferences of a RNA-binding protein. The model is trained on '
                                                  'sequences and structures from a CLIP-seq experiment given in '
                                                  'two FASTA-like files.\n'
                                                  'During the training process, statistics about the model are printed '
@@ -48,30 +49,14 @@ def parseArguments(args):
                         help='produce output every <i> iterations (default: i=1000)')
     parser.add_argument('--write_model_state', '-w', action='store_true',
                         help='write model state every i iterations')
+    parser.add_argument('--only_best_shape', action='store_true',
+                        help='train only using best shape for each sequence')
     return parser.parse_args()
 
-def prepareLogger(name, loggerFile, verbose = False, stdout = False):
-    newLogger = logging.getLogger(name)
-
-    if stdout:
-        stdoutHandler = logging.StreamHandler(sys.stdout)
-        if verbose:
-            fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            stdoutHandler.setFormatter(fmt)
-        newLogger.addHandler(stdoutHandler)
-
-    fileHandler = logging.FileHandler(loggerFile)
-    if verbose:
-        fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        fileHandler.setFormatter(fmt)
-    newLogger.addHandler(fileHandler)
-    newLogger.setLevel(logging.INFO)
-
-    return newLogger
 
 def main(args):
     options = parseArguments(args)
-
+    
     #Create output directory for job
     job_directory = "{0}/{1}_{2}/".format(options.output_directory, options.job_name, datetime.datetime.now().strftime('%y%m%d_%H%M%S'))
     os.mkdir(job_directory)
@@ -91,30 +76,39 @@ def main(args):
     main_logger.info("Output interval: %s iterations", options.output_interval)
 
     #Read in sequences and shapes
-    training_sequence_container = readSequencesAndShapes(options.training_sequences, options.training_shapes, options.motif_length, main_logger)
+    training_sequence_container = readSequencesAndShapes(options.training_sequences, options.training_shapes, options.motif_length, main_logger, options.only_best_shape)
     main_logger.info('Read %s training sequences', training_sequence_container.get_length())
 
     model0 = SeqStructHMM(0, job_directory, main_logger, numbers_logger, training_sequence_container, options.motif_length, options.flexibility, options.sample_size)
 
     if options.baum_welch:
-        best_baumwelch_sequence_models = seq_hmm.find_best_baumwelch_sequence_models(options.motif_length, training_sequence_container, main_logger)
-        best_viterbi_paths = best_baumwelch_sequence_models[0][2]
+        best_baumwelch_sequence_model = seq_hmm.find_best_baumwelch_sequence_models(options.motif_length, training_sequence_container, main_logger)
+        best_viterbi_paths = best_baumwelch_sequence_model[1]
 
         model0.prepare_model_with_viterbi(best_viterbi_paths)
     else:
         model0.prepare_model_randomly()
 
+    main_logger.info('Completed initialisation. Begin training.')
     model0.do_training(options.output_interval, options.termination, options.write_model_state)
+    main_logger.info('Completed training. Write PWMs.')
     pwm_global = model0.get_pwm_global()
     pwm_global.write_to_file(job_directory + 'recovered_pwm_global.txt')
     pwm_global.write_weblogo(job_directory + 'recovered_pwm_global.png')
-
     pwm_best_sequences = model0.get_pwm_best_sequences()
     pwm_best_sequences.write_to_file(job_directory + 'recovered_pwm_best_sequences.txt')
     pwm_best_sequences.write_weblogo(job_directory + 'recovered_pwm_best_sequences.png')
+    pwm_hairpin = model0.get_pwm_hairpin()
+    pwm_hairpin.write_to_file(job_directory + 'recovered_pwm_hairpin.txt')
+    pwm_hairpin.write_weblogo(job_directory + 'recovered_pwm_hairpin.png')
 
-    model0.model.printAsGraph(job_directory + 'model_at_end.png', model0.sequence_container.get_length())
-    model0.model.write(job_directory + 'model_at_end.xml')
+    main_logger.info('Completed writing PWMs. Print model graph.')
+    graph_path = job_directory + 'model_at_end.png'
+    model0.model.printAsGraph(graph_path, model0.sequence_container.get_length())
+    main_logger.info('Printed model graph: {0} Write model XML.'.format(graph_path))
+    xml_path = job_directory + 'model_at_end.xml'
+    model0.model.write(xml_path)
+    main_logger.info('Wrote model XML:' + xml_path)
 
 if __name__ == "__main__" :
     sys.exit(main(sys.argv))
