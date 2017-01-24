@@ -7,7 +7,7 @@ import math
 
 from MyHMM import Alphabet, MyHMMFromMatrices, DiscreteDistribution, LabelDomain, EmissionSequence, SequenceSet
 from pwm import PositionWeightMatrix
-from simple_queue import SimpleQueue
+from SimpleQueue import SimpleQueue
 
 
 class SeqStructHMM:
@@ -120,12 +120,12 @@ class SeqStructHMM:
 
     def prepare_model_randomly(self):
         self.model = SeqStructHMM.generateSequenceStructureHMM(self.extended_alphabet2, self.motif_length)
-
+        
         #Randomly select motif start positions s1..sm for all m sequences
         for id in self.sequence_container.get_ids():
             self.sequence_container.set_random_motif_starts_for_id(id, self.motif_length)
-        self.main_logger.info('Finished setting random motif starts')
 
+        self.main_logger.info('Finished setting random motif starts')
 
     def prepare_model_with_viterbi(self, viterbi_paths):
         self.model = SeqStructHMM.generateSequenceStructureHMM(self.extended_alphabet2, self.motif_length)

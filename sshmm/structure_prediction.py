@@ -1,11 +1,9 @@
 import sys, re
+from subprocess import call, Popen, PIPE
+from string import upper
 import os
 import tempfile
 import forgi.graph.bulge_graph as fgb
-
-from subprocess import call, Popen, PIPE
-from string import upper
-
 
 def translateIntoContexts(dotBracketString):
     bg = fgb.BulgeGraph()
