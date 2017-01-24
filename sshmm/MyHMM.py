@@ -3,7 +3,7 @@ from collections import Counter
 from ghmm import *
 import pygraphviz as pgv
 import cEstimate
-
+from pkg_resources import resource_filename
 
 class MyHMMError(GHMMError):
     """Base class for exceptions in this module."""
@@ -298,7 +298,7 @@ class MyHMM(StateLabelHMM):
                         #Dirty hack because PyGraphViz throws mysterious IOError when height is set to 4 (no explanation given and hours of debugging could not find a reason)
                         if currentFontsize == 4:
                             currentFontsize = 5
-                        newCell = "<tr><td border=\"0\" width=\"80\" height=\"{0}\" fixedsize=\"true\"><img scale=\"both\" src=\"{1}\"/></td></tr>".format(currentFontsize, '/home/heller_d/RNABinding/code/seqstructhmm/img/' + currentBase + '.png')
+                        newCell = "<tr><td border=\"0\" width=\"80\" height=\"{0}\" fixedsize=\"true\"><img scale=\"both\" src=\"{1}\"/></td></tr>".format(currentFontsize, resource_filename('sshmm', 'img/' + currentBase + '.png'))
                         html += newCell
 
                 if html == None:
