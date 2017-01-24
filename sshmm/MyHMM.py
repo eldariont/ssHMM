@@ -1,10 +1,8 @@
 import warnings
-import pygraphviz as pgv
-import cEstimate
-
 from collections import Counter
 from ghmm import *
-from pkg_resources import resource_filename
+import pygraphviz as pgv
+import cEstimate
 
 
 class MyHMMError(GHMMError):
@@ -268,11 +266,10 @@ class MyHMM(StateLabelHMM):
     def printAsGraph(self, fileName, sequenceNumber):
         graph = pgv.AGraph(strict=False,directed=True)
         stateNames = map(self.externalLabel, range(self.N))
-        probabilityToGetIntoState = self._getStateProbabilities()
+        coordinate_multiplier = 200
 
         #Add states
         for index, state in enumerate(stateNames):
-            #if probabilityToGetIntoState[index] > 0.05:
             if state == 'St':
                 html = "<<font point-size=\"50\">Start</font>>"
             elif state == 'En':
@@ -301,7 +298,7 @@ class MyHMM(StateLabelHMM):
                         #Dirty hack because PyGraphViz throws mysterious IOError when height is set to 4 (no explanation given and hours of debugging could not find a reason)
                         if currentFontsize == 4:
                             currentFontsize = 5
-                        newCell = "<tr><td border=\"0\" width=\"80\" height=\"{0}\" fixedsize=\"true\"><img scale=\"both\" src=\"{1}\"/></td></tr>".format(currentFontsize, resource_filename('sshmm', 'img/' + currentBase + '.png'))
+                        newCell = "<tr><td border=\"0\" width=\"80\" height=\"{0}\" fixedsize=\"true\"><img scale=\"both\" src=\"{1}\"/></td></tr>".format(currentFontsize, '/home/heller_d/RNABinding/code/seqstructhmm/img/' + currentBase + '.png')
                         html += newCell
 
                 if html == None:
@@ -320,7 +317,7 @@ class MyHMM(StateLabelHMM):
                 row = (index - 1) % 5
                 col = ((index - 1) / 5) + 1
 
-            coordinates = "%d,%d!" % (3*col, 4*row)
+            coordinates = "%d,%d!" % (coordinate_multiplier*col, coordinate_multiplier*row)
             graph.add_node(state, label=html, pos=coordinates, shape="box", penwidth = 1)
 
         #Add transitions
@@ -331,19 +328,18 @@ class MyHMM(StateLabelHMM):
                     graph.add_edge(originState, destinationState, penwidth = prob*10)
 
         #Add labels
-        graph.add_node("Multiloop", label="<<font point-size=\"50\">Multiloop</font>>", pos="-3,16!", shape="plaintext")
-        graph.add_node("Hairpin", label="<<font point-size=\"50\">Hairpin</font>>", pos="-3,12!", shape="plaintext")
-        graph.add_node("Stem", label="<<font point-size=\"50\">Stem</font>>", pos="-3,8!", shape="plaintext")
-        graph.add_node("Internal loop", label="<<font point-size=\"50\">Internal loop</font>>", pos="-3,4!", shape="plaintext")
-        graph.add_node("Exterior loop", label="<<font point-size=\"50\">Exterior loop</font>>", pos="-3,0!", shape="plaintext")
+        graph.add_node("Multiloop", label="<<font point-size=\"50\">Multiloop</font>>", pos="{0},{1}!".format(-coordinate_multiplier, 4*coordinate_multiplier), shape="plaintext")
+        graph.add_node("Hairpin", label="<<font point-size=\"50\">Hairpin</font>>", pos="{0},{1}!".format(-coordinate_multiplier, 3*coordinate_multiplier), shape="plaintext")
+        graph.add_node("Stem", label="<<font point-size=\"50\">Stem</font>>", pos="{0},{1}!".format(-coordinate_multiplier, 2*coordinate_multiplier), shape="plaintext")
+        graph.add_node("Internal loop", label="<<font point-size=\"50\">Internal loop</font>>", pos="{0},{1}!".format(-coordinate_multiplier, coordinate_multiplier), shape="plaintext")
+        graph.add_node("Exterior loop", label="<<font point-size=\"50\">Exterior loop</font>>", pos="{0},{1}!".format(-coordinate_multiplier, 0), shape="plaintext")
 
         for position in xrange(1, ((self.N - 2) / 5) + 1):
-            graph.add_node(str(position), label="<<font point-size=\"50\">{0}</font>>".format(position), pos="{0},18!".format(3 * position), shape="plaintext")
+            graph.add_node(str(position), label="<<font point-size=\"50\">{0}</font>>".format(position), pos="{0},{1}!".format(coordinate_multiplier * position, 4.5*coordinate_multiplier), shape="plaintext")
 
         #do not print annoying warning of pygraphviz that cell size is too small for content
         warnings.filterwarnings('ignore', '.*cell size too small for content.*', RuntimeWarning)
-
-        graph.layout(prog='neato')
+        graph.layout(prog='neato', args='-n2')
         graph.draw(fileName)
 
 
