@@ -74,7 +74,11 @@ We distribute ssHMM both as a Python package and as a Docker image (similar to a
 10.  Install ssHMM:
   
   ```bash
-  sudo python setup.py install`
+  #as root
+  sudo python setup.py install
+  
+  #as non-root
+  python setup.py install --user
   ```
   This will install ssHMM and the following python package dependencies: numpy, graphviz, pygraphviz, weblogo, forgi. If setuptools fails to install any of the dependencies, try to install it separately (e.g. with `sudo pip install numpy`).
   
