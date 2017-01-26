@@ -148,7 +148,7 @@ The version of the genome can be given as an optional parameter. It defaults to 
 -> download from ``http://hgdownload.soe.ucsc.edu/downloads.html#human`` (Full data set), e.g. ``http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes``
 
 ``/genomes/[version]/UCSCGenesTrack.bed``:
--> download 'GENCODE' track in table browser (``http://genome.ucsc.edu/cgi-bin/hgTables?hgsid=448474771_vbAiqf22i9Krk5unDxjcdLiigBW1``); choose 'knownGene' and 'BED' as output format
+-> download in table browser (http://genome.ucsc.edu/cgi-bin/hgTables); choose most recent GENCODE track (currently GENCODE Gene V24lift37->Basic (for hg19) and All GENCODE V24->Basic (for hg38)) and 'BED' as output format
 
 ``/genomes/[version]/[version].fa``:
 -> download chromosomes from ``http://hgdownload.soe.ucsc.edu/downloads.html``; e.g. ``wget --timestamping 'ftp://hgdownload.cse.ucsc.edu/goldenPath/hg38/chromosomes/*'``; concatenate chromosomes with cat and print into .fa file (e.g. with ``zcat chr* > hg19.fa``)
