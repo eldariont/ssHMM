@@ -4,7 +4,7 @@ import sys
 import argparse
 import threading
 import os
-from subprocess import call
+from subprocess import call, check_call
 from itertools import izip
 from sshmm.structure_prediction import calculate_rna_shapes_from_file, calculate_rna_structures_from_file
 
@@ -28,6 +28,8 @@ def parseArguments(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""Prepare a CLIP-Seq dataset in BED format for the training of an ssHMM. The following preprocessing steps are taken:
 1 - Filter (positive) BED file, 2 - Shuffle (positive) BED file to generate negative dataset, 3 - Enlongate positive and negative BED files for later structure prediction, 4 - Fetch genomic sequences for elongated BED files, 5 - Produce FASTA files with genomic sequences in viewpoint format, 6 - Calculate RNA shapes, 7 - Calculate RNA structures
+
+This script requires awk, bedtools (shuffle, slop, getfasta), RNAshapes, and RNAstructures.
 
 A root directory for the datasets and a dataset name (e.g., the protein name) has to be given. The following files will be created in the root directory and its subdirectories:
 - /bed/<dataset_name>/positive_raw.bed - positive BED file from CLIP-Seq experiment
@@ -74,6 +76,51 @@ The version of the genome can be given as an optional parameter. It defaults to 
     parser.add_argument('--min_length', type=int, default=8, help='minimum binding site length (default: 8)')
     parser.add_argument('--max_length', type=int, default=75, help='maximum binding site length (default: 75)')
     return parser.parse_args()
+
+def checkPrereqs():
+    devnull = open(os.devnull, 'w')
+    try:
+        check_call(["bedtools", "--version"], stdout=devnull, stderr=devnull)
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            print>>sys.stderr, "ERROR: bedtools not found. Tried to execute 'bedtools --version'."
+            return False
+        else:
+            # Something else went wrong while trying to run `bedtools`
+            raise
+
+    try:
+        check_call(["awk", "-V"], stdout=devnull, stderr=devnull)
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            print>>sys.stderr, "ERROR: awk not found. Tried to execute 'awk -V'."
+            return False
+        else:
+            # Something else went wrong while trying to run `awk`
+            raise
+
+    try:
+        check_call(["RNAshapes", "-v"], stdout=devnull, stderr=devnull)
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            print>>sys.stderr, "ERROR: RNAshapes not found. Tried to execute 'RNAshapes -v'."
+            return False
+        else:
+            # Something else went wrong while trying to run `RNAshapes`
+            raise
+
+    try:
+        check_call(["Fold", "-v"], stdout=devnull, stderr=devnull)
+        check_call(["ct2dot", "-v"], stdout=devnull, stderr=devnull)
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            print>>sys.stderr, "ERROR: RNAstructures not found. Tried to execute 'Fold -v' and 'ct2dot -v'."
+            return False
+        else:
+            # Something else went wrong while trying to run `RNAstructures`
+            raise
+
+    return True
 
 def prepareFolderStructure(directory, proteinName):
     if not os.path.exists(directory):
@@ -144,6 +191,10 @@ def formatFasta(fastaFormattedFileName, bedIntervalFileName, bedIntervalLongFile
 
 def main(args):
     options = parseArguments(args)
+
+    #Check required programs bedtools, awk, RNAshapes, and RNAstructures
+    if not checkPrereqs():
+        return
 
     #Prepare folder structure
     if not(prepareFolderStructure(options.directory, options.dataset_name)):
