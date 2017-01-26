@@ -237,8 +237,8 @@ class SeqStructHMM:
 
                     if not progressMade:
                         self.main_logger.info("Break model %s after %s iterations", 0, self.getIteration())
-                        best_model = sorted(last_models.as_list(), key=lambda x: x[0][2], reverse=True)[0]
-                        return best_model
+                        last_model = last_models.as_list()[-1]
+                        return last_model
 
                     if last_models.length() == 3:
                         last_models.pop()
