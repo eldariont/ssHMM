@@ -37,14 +37,14 @@ def parseArguments(args):
                         help='greedyness of Gibbs sampler: model parameters are sampled from among the top f configurations (default: f=10), set f to 0 in order to include all possible configurations')
     parser.add_argument('--block_size', '-s', type=int, default = 1,
                         help='number of sequences to be held-out in each iteration (default: 1)')
-    parser.add_argument('--termination', '-t', type=float, default = 10.0,
+    parser.add_argument('--threshold', '-t', type=float, default = 10.0,
                         help='the iterative algorithm is terminated if this reduction in sequence structure '
                         'loglikelihood is not reached for any of the 3 last measurements (default: 10)')
     parser.add_argument('--job_name', '-j', type=str, default="job",
                         help='name of the job (default: "job")')
     parser.add_argument('--output_directory', '-o', type=str, default=".",
                         help='directory to write output files to (default: current directory)')
-    parser.add_argument('--output_interval', '-i', type=int, default = 100,
+    parser.add_argument('--termination_interval', '-i', type=int, default = 100,
                         help='produce output every <i> iterations (default: i=100)')
     parser.add_argument('--write_model_state', '-w', action='store_true', default=True,
                         help='write model state every i iterations')
@@ -69,10 +69,10 @@ def main(args):
     main_logger.info("Baum-Welch initialization: %s", "on" if options.baum_welch else "off")
     main_logger.info("Flexibility: top %s configurations", options.flexibility)
     main_logger.info("Block size: %s", options.block_size)
-    main_logger.info("Termination: %s", options.termination)
+    main_logger.info("Termination threshold: %s", options.threshold)
     main_logger.info("Job name: %s", options.job_name)
     main_logger.info("Output directory: %s", options.output_directory)
-    main_logger.info("Output interval: %s iterations", options.output_interval)
+    main_logger.info("Termination interval: %s iterations", options.termination_interval)
     main_logger.info("Write model state: %s", "on" if options.write_model_state else "off")
     main_logger.info("Structures: %s", "only the best of each sequence" if options.only_best_shape else "all")
 
@@ -91,7 +91,7 @@ def main(args):
     main_logger.info('Completed initialisation. Begin training.')
 
     #Train model
-    model0.do_training(options.output_interval, options.termination, options.write_model_state)
+    model0.do_training(options.termination_interval, options.termination, options.write_model_state)
     main_logger.info('Completed training. Write PWMs.')
 
     #Write results

@@ -157,12 +157,12 @@ The version of the genome can be given as an optional parameter. It defaults to 
 
 **usage**: train_seqstructhmm [-h] [--motif_length MOTIF_LENGTH] [--baum_welch]
                           [--flexibility FLEXIBILITY]
-                          [--sample_size SAMPLE_SIZE]
-                          [--termination TERMINATION] [--job_name JOB_NAME]
+                          [--block_size BLOCK_SIZE] [--threshold THRESHOLD]
+                          [--job_name JOB_NAME]
                           [--output_directory OUTPUT_DIRECTORY]
-                          [--output_interval OUTPUT_INTERVAL]
-                          [--write_model_state]
-                          training_sequences training_shapes
+                          [--termination_interval TERMINATION_INTERVAL]
+                          [--write_model_state] [--only_best_shape]
+                          training_sequences training_structures
 
 **positional arguments**:
   * training_sequences: FASTA file storing the training sequences
@@ -170,34 +170,45 @@ The version of the genome can be given as an optional parameter. It defaults to 
 
 **optional arguments**:
   * -h, --help: show this help message and exit
-  * --motif_length MOTIF_LENGTH, -n MOTIF_LENGTH: length of the motif that shall be found (default: 8)
-  * --baum_welch, -b: should the model be initialized with a Baum-Welch optimized sequence motif (default: no)
-  * --flexibility FLEXIBILITY, -f FLEXIBILITY: number of top configurations that configuration to set shall be randomly drawn from (default: 0), set to 0 in order to include all possible configurations
-  * --sample_size SAMPLE_SIZE, -s SAMPLE_SIZE: number of sequences to be sampled each iteration (default: 1)
-  * --termination TERMINATION, -t TERMINATION: the iterative algorithm is terminated if this reduction in sequence structure loglikelihood is not reached for any of the 3 last measurements
+  * --motif_length MOTIF_LENGTH, -n MOTIF_LENGTH: length of the motif that shall be found (default: 6)
+  * --baum_welch, -b: should the model be initialized with a Baum-Welch optimized sequence motif (default: yes)
+  * --flexibility FLEXIBILITY, -f FLEXIBILITY: greedyness of Gibbs sampler: model parameters are sampled from among the top f configurations (default: f=10), set f to 0 in order to include all possible configurations
+  * --block_size BLOCK_SIZE, -s BLOCK_SIZE: number of sequences to be held-out in each iteration (default: 1)
+  * --threshold THRESHOLD, -t THRESHOLD: the iterative algorithm is terminated if this reduction in sequence structure loglikelihood is not reached for any of the 3 last measurements (default: 10)
   * --job_name JOB_NAME, -j JOB_NAME: name of the job (default: "job")
   * --output_directory OUTPUT_DIRECTORY, -o OUTPUT_DIRECTORY: directory to write output files to (default: current directory)
-  * --output_interval OUTPUT_INTERVAL, -i OUTPUT_INTERVAL: produce output every i iterations (default: i=1000)
+  * --termination_interval TERMINATION_INTERVAL, -i TERMINATION_INTERVAL: produce output every i iterations (default: i=100)
   * --write_model_state, -w: write model state every i iterations
+  * --only_best_shape: train only using best structure for each sequence (default: use all structures)
 
 This script trains an hidden Markov model for the sequence-structure binding preferences of an RNA-binding protein. The model is trained on sequences and structures from a CLIP-seq experiment given in two FASTA-like files.
-During the training process, statistics about the model are printed on stdout. In every iteration, the current model and a visualization of the model are stored in the output directory.
+During the training process, statistics about the model are printed on stdout. In every iteration, the current model and a visualization of the model can be stored in the output directory.
 The training process terminates when no significant progress has been made for three iterations.
 
 
 ### Train ssHMM on a batch of CLIP-Seq datasets: *batch_seqstructhmm*
 
-**usage**: batch_seqstructhmm [-h] [--cores CORES] data_directory proteins batch_directory
+**usage**: batch_seqstructhmm [-h] [--cores CORES] [--motif_length MOTIF_LENGTH]
+                          [--baum_welch] [--flexibility FLEXIBILITY]
+                          [--block_size BLOCK_SIZE] [--threshold THRESHOLD]
+                          [--termination_interval TERMINATION_INTERVAL]
+                          data_directory proteins batch_directory
 
 **positional arguments**:
   * data_directory: data directory (must have the following subdirectories: fasta/, shapes/, structures/
-  * proteins: list of RNA-binding proteins to analyze (surrounded by quotation marks)
+  * proteins: list of RNA-binding proteins to analyze (surrounded by quotation marks, separated by whitespace)
   * batch_directory: directory for batch output
 
 **optional arguments**:
   * -h, --help: show this help message and exit
   * --cores CORES: number of cores to use (if not given, all cores are used)
+  * --motif_length MOTIF_LENGTH, -n MOTIF_LENGTH: length of the motifs that shall be found (default: 6)
+  * --baum_welch, -b: should the models be initialized with a Baum-Welch optimized sequence motif (default: yes)
+  * --flexibility FLEXIBILITY, -f FLEXIBILITY: greedyness of Gibbs sampler: model parameters are sampled from among the top f configurations (default: f=10), set f to 0 in order to include all possible configurations
+  * --block_size BLOCK_SIZE, -s BLOCK_SIZE: number of sequences to be held-out in each iteration (default: 1)
+  * --threshold THRESHOLD, -t THRESHOLD: the iterative algorithm is terminated if this reduction in sequence structure loglikelihood is not reached for any of the 3 last measurements (default: 10)
+  * --termination_interval TERMINATION_INTERVAL, -i TERMINATION_INTERVAL: produce output every <i> iterations (default: i=100)
 
-This script trains a batch of hidden Markov models for the sequence-structure binding preferences of a given set of RNA-binding protein. The models are trained on sequences and structures in FASTA format located in a given data directory.
+This script trains multiple Hidden Markov models for the sequence-structure binding preferences of a given set of RNA-binding protein. The models are trained on sequences and structures in FASTA format located in a given data directory.
 During the training process, statistics about the models are printed on stdout. In every iteration, the current model and a visualization of the model are stored in the batch directory.
-The training process terminates when no significant progress has been made for three iterations.
+The training processes terminate when no significant progress has been made for three iterations.

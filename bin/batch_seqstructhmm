@@ -42,17 +42,17 @@ def parseArguments(args):
                         help='greedyness of Gibbs sampler: model parameters are sampled from among the top f configurations (default: f=10), set f to 0 in order to include all possible configurations')
     parser.add_argument('--block_size', '-s', type=int, default=1,
                         help='number of sequences to be held-out in each iteration (default: 1)')
-    parser.add_argument('--termination', '-t', type=float, default=10.0,
+    parser.add_argument('--threshold', '-t', type=float, default=10.0,
                         help='the iterative algorithm is terminated if this reduction in sequence structure '
                              'loglikelihood is not reached for any of the 3 last measurements (default: 10)')
-    parser.add_argument('--output_interval', '-i', type=int, default=100,
+    parser.add_argument('--termination_interval', '-i', type=int, default=100,
                         help='produce output every <i> iterations (default: i=100)')
     return parser.parse_args()
 
 
-def do_training_for_configuration(data_directory, batch_directory, protein, structure_type, motif_length, baum_welch, flexibility, block_size, output_interval, termination_criterion):
+def do_training_for_configuration(data_directory, batch_directory, protein, structure_type, motif_length, baum_welch, flexibility, block_size, termination_interval, threshold):
     # Create output directory for job
-    job_directory = '{0}/jobs/{1}_{2}_ml{3}_fl{4}_ss{5}_oi{6}_tc{7}'.format(batch_directory, protein, structure_type, motif_length, flexibility, block_size, output_interval, termination_criterion)
+    job_directory = '{0}/jobs/{1}_{2}_ml{3}_fl{4}_bs{5}_ti{6}_tt{7}'.format(batch_directory, protein, structure_type, motif_length, flexibility, block_size, termination_interval, threshold)
     os.mkdir(job_directory)
 
     random.seed() #reinitialize the random number generator because else random numbers would repeat
@@ -79,7 +79,7 @@ def do_training_for_configuration(data_directory, batch_directory, protein, stru
         model0.prepare_model_randomly()
 
     # Train model
-    key_statistics = model0.do_training(output_interval, termination_criterion, write_model_state=True)[0]
+    key_statistics = model0.do_training(termination_interval, threshold, write_model_state=True)[0]
 
     # Write results
     pwm_global = model0.get_pwm_global()
@@ -115,7 +115,7 @@ def main(args):
     proteins = options.proteins.split()
     jobs = itertools.product([options.data_directory], [batch_directory], proteins, ['shapes'],
                                               [options.motif_length], [True], [options.flexibility],
-                                              [options.block_size], [options.output_interval], [options.termination])
+                                              [options.block_size], [options.termination_interval], [options.threshold])
 
     #Determine number of cores to use
     if options.cores:
