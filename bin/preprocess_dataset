@@ -145,11 +145,11 @@ def formatFasta(fastaFormattedFileName, bedIntervalFileName, bedIntervalLongFile
 def main(args):
     options = parseArguments(args)
 
-    #prepare folder structure
+    #Prepare folder structure
     if not(prepareFolderStructure(options.directory, options.dataset_name)):
         print>>sys.stderr, 'ERROR: Given directory not found.'
 
-    #filtering bed
+    #Filtering bed
     bedFileName = options.directory + '/bed/' + options.dataset_name + '/positive_raw.bed'
     bedPositiveFileName = options.directory + '/bed/' + options.dataset_name + '/positive.bed'
     if options.jump_to <= 1:
