@@ -27,10 +27,14 @@ We distribute ssHMM both as a Python package and as a Docker image (similar to a
 ##### Prerequisites:
 - GHMM (http://ghmm.org/)
 - GraphViz (http://www.graphviz.org/)
+
+For preprocessing BED files with preprocess_dataset (tested only on Linux and macOS):
+- bedtools (https://github.com/arq5x/bedtools2)
+- awk
 - RNAshapes (http://bibiserv.techfak.uni-bielefeld.de/rnashapes)
 - RNAstructure (http://rna.urmc.rochester.edu/rnastructure.html)
 
-##### Installation steps:
+##### Installation of prerequisites:
 
 1.  Install prerequisites for GHMM as described on http://ghmm.sourceforge.net/installation.html. The commands for Ubuntu are:
   
@@ -68,10 +72,14 @@ We distribute ssHMM both as a Python package and as a Docker image (similar to a
   ```bash
   sudo PKG_CONFIG_ALLOW_SYSTEM_LIBS=OHYESPLEASE pip install pygraphviz
   ```
-7.  Download and install RNAshapes as described on http://bibiserv.techfak.uni-bielefeld.de/rnashapes?id=rnashapes_view_download.
-8.  Download and install RNAstructure from http://rna.urmc.rochester.edu/register.html.
-9.  Download ssHMM from this page
-10.  Install ssHMM:
+7.  Install bedtools as described on http://bedtools.readthedocs.io/en/latest/content/installation.html
+8.  Download and install RNAshapes as described on http://bibiserv.techfak.uni-bielefeld.de/rnashapes?id=rnashapes_view_download.
+9.  Download and install RNAstructure from http://rna.urmc.rochester.edu/register.html.
+
+##### Installation of ssHMM:
+
+1.  Download ssHMM from this page
+2.  Install ssHMM:
   
   ```bash
   #as root
