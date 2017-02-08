@@ -91,7 +91,7 @@ def main(args):
     main_logger.info('Completed initialisation. Begin training.')
 
     #Train model
-    model0.do_training(options.termination_interval, options.termination, options.write_model_state)
+    model0.do_training(options.termination_interval, options.threshold, options.write_model_state)
     main_logger.info('Completed training. Write PWMs.')
 
     #Write results
