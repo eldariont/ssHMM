@@ -28,19 +28,21 @@ def parseArguments(args):
                                                  'The training processes terminate when no significant progress has been '
                                                  'made for three iterations.')
     parser.add_argument('data_directory', type=str,
-                        help='data directory (must have the following subdirectories: fasta/, shapes/, structures/')
+                        help='data directory; must contain the sequence files under fasta/<protein>/positive.fasta and structure files under <structure_type>/<protein>/positive.txt')
     parser.add_argument('proteins', type=str,
                         help='list of RNA-binding proteins to analyze (surrounded by quotation marks, separated by whitespace)')
     parser.add_argument('batch_directory', type=str,
                         help='directory for batch output')
-    parser.add_argument('--cores', type=int, help='number of cores to use (if not given, all cores are used)')
+    parser.add_argument('--cores', '-c', type=int, help='number of cores to use (if not given, all cores are used)')
+    parser.add_argument('--structure_type', '-s', type=str, default='shapes',
+                        help='structure type to use; must match location of structure files (see data_directory argument above) (default: shapes)')
     parser.add_argument('--motif_length', '-n', type=int, default=6,
                         help='length of the motifs that shall be found (default: 6)')
     parser.add_argument('--baum_welch', '-b', action='store_true', default=True,
                         help='should the models be initialized with a Baum-Welch optimized sequence motif (default: yes)')
     parser.add_argument('--flexibility', '-f', type=int, default=10,
                         help='greedyness of Gibbs sampler: model parameters are sampled from among the top f configurations (default: f=10), set f to 0 in order to include all possible configurations')
-    parser.add_argument('--block_size', '-s', type=int, default=1,
+    parser.add_argument('--block_size', type=int, default=1,
                         help='number of sequences to be held-out in each iteration (default: 1)')
     parser.add_argument('--threshold', '-t', type=float, default=10.0,
                         help='the iterative algorithm is terminated if this reduction in sequence structure '
@@ -50,9 +52,9 @@ def parseArguments(args):
     return parser.parse_args()
 
 
-def do_training_for_configuration(data_directory, batch_directory, protein, structure_type, motif_length, baum_welch, flexibility, block_size, termination_interval, threshold):
+def do_training_for_configuration(data_directory, batch_job_directory, protein, structure_type, motif_length, baum_welch, flexibility, block_size, termination_interval, threshold):
     # Create output directory for job
-    job_directory = '{0}/jobs/{1}_{2}_ml{3}_fl{4}_bs{5}_ti{6}_tt{7}'.format(batch_directory, protein, structure_type, motif_length, flexibility, block_size, termination_interval, threshold)
+    job_directory = '{0}/{1}_{2}_ml{3}_fl{4}_bs{5}_ti{6}_tt{7}'.format(batch_job_directory, protein, structure_type, motif_length, flexibility, block_size, termination_interval, threshold)
     os.mkdir(job_directory)
 
     random.seed() #reinitialize the random number generator because else random numbers would repeat
@@ -104,16 +106,15 @@ def main(args):
     options = parseArguments(args)
 
     #Create output directory for job
-    batch_directory = "{0}/{1}".format(options.batch_directory, datetime.datetime.now().strftime('%y%m%d_%H%M%S'))
-    os.mkdir(batch_directory)
-    os.mkdir(batch_directory + '/jobs')
+    batch_job_directory = "{0}/batch_{1}".format(options.batch_directory, datetime.datetime.now().strftime('%y%m%d_%H%M%S'))
+    os.mkdir(batch_job_directory)
 
     #Initialize log
-    batch_logger = prepareLogger('batch_logger', batch_directory + '/batch.log', verbose=True, stdout=True)
+    batch_logger = prepareLogger('batch_logger', batch_job_directory + '/batch.log', verbose=True, stdout=True)
 
     #Generate jobs
     proteins = options.proteins.split()
-    jobs = itertools.product([options.data_directory], [batch_directory], proteins, ['shapes'],
+    jobs = itertools.product([options.data_directory], [batch_job_directory], proteins, [options.structure_type],
                                               [options.motif_length], [True], [options.flexibility],
                                               [options.block_size], [options.termination_interval], [options.threshold])
 

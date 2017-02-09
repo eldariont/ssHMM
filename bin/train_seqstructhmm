@@ -46,8 +46,8 @@ def parseArguments(args):
                         help='directory to write output files to (default: current directory)')
     parser.add_argument('--termination_interval', '-i', type=int, default = 100,
                         help='produce output every <i> iterations (default: i=100)')
-    parser.add_argument('--write_model_state', '-w', action='store_true', default=True,
-                        help='write model state every i iterations')
+    parser.add_argument('--no_model_state', '-w', action='store_true',
+                        help='do not write model state every i iterations')
     parser.add_argument('--only_best_shape', action='store_true',
                         help='train only using best structure for each sequence (default: use all structures)')
     return parser.parse_args()
@@ -73,7 +73,7 @@ def main(args):
     main_logger.info("Job name: %s", options.job_name)
     main_logger.info("Output directory: %s", options.output_directory)
     main_logger.info("Termination interval: %s iterations", options.termination_interval)
-    main_logger.info("Write model state: %s", "on" if options.write_model_state else "off")
+    main_logger.info("Write model state: %s", "off" if options.no_model_state else "on")
     main_logger.info("Structures: %s", "only the best of each sequence" if options.only_best_shape else "all")
 
     #Read in sequences and shapes
@@ -91,7 +91,7 @@ def main(args):
     main_logger.info('Completed initialisation. Begin training.')
 
     #Train model
-    model0.do_training(options.termination_interval, options.threshold, options.write_model_state)
+    model0.do_training(options.termination_interval, options.threshold, not options.no_model_state)
     main_logger.info('Completed training. Write PWMs.')
 
     #Write results
