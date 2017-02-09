@@ -10,6 +10,12 @@ RNA-binding proteins (RBPs) play a vital role in the post-transcriptional contro
 
 ssHMM was developed for the analysis of data from RNA-binding assays. Its aim is to help biologists to derive a binding motif for one or a number of RNA-binding proteins. ssHMM was written in Python and is a pure command-line tool.
 
+### Output
+
+Below, you find an example output of ssHMM. After training on an RBP dataset, the model can be visualized as a graph. Each of the HMM states, including the start and the end state, is represented by a box. The states are arranged into rows and columns where the columns represent the motif positions and the rows represent the five structural contexts of RNA. Each state's emission probabilities are visualized as a sequence logo. The relative heights of the nucleotides in a stack represent their emission probabilities. The total height of all four nucleotides is scaled according to the information content of the state's emission distribution. The transition probabilities between the states are visualized as arrows. The thicker an arrow between two states, the more likely is a transition between the two. To reduce clutter, no arrow is shown if the transition probability is less than 0.05. The RBP visualized below prefers the sequence motif UGGAA and primarily binds stem regions of RNA.
+
+![alt tag](https://github.molgen.mpg.de/raw/heller/ssHMM_docs/master/images/visualization_DGCR8.png)
+
 ### Documentation
 
 Check out our documentation: http://sshmm.readthedocs.io
