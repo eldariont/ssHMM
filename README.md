@@ -23,3 +23,7 @@ Check out our documentation: http://sshmm.readthedocs.io
 ### Citation
 
 Heller, D., Krestel, R., Ohler, U., Vingron, M., & Marsico, A. (2016). ssHMM: [Extracting intuitive sequence-structure motifs from high-throughput RNA-binding protein data](http://dx.doi.org/10.1101/076034). bioRxiv, 076034.
+
+### License
+
+The project is licensed under the GNU General Public License.
