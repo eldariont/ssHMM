@@ -81,38 +81,40 @@ def main(args):
     main_logger.info('Finished reading %s training sequences', training_sequence_container.get_length())
 
     #Initialize model
-    model0 = SeqStructHMM(0, job_directory, main_logger, numbers_logger, training_sequence_container, options.motif_length, options.flexibility, options.block_size)
+    model = SeqStructHMM(job_directory, main_logger, numbers_logger, training_sequence_container, options.motif_length,
+                          options.flexibility, options.block_size)
     if options.baum_welch:
         best_baumwelch_sequence_model = seq_hmm.find_best_baumwelch_sequence_models(options.motif_length, training_sequence_container, main_logger)
         best_viterbi_paths = best_baumwelch_sequence_model[1]
-        model0.prepare_model_with_viterbi(best_viterbi_paths)
+        model.prepare_model_with_viterbi(best_viterbi_paths)
     else:
-        model0.prepare_model_randomly()
-    main_logger.info('Completed initialisation. Begin training.')
+        model.prepare_model_randomly()
+    main_logger.info('Completed initialisation. Begin training..')
 
     #Train model
-    model0.do_training(options.termination_interval, options.threshold, not options.no_model_state)
-    main_logger.info('Completed training. Write PWMs.')
+    model.do_training(options.termination_interval, options.threshold, not options.no_model_state)
+    main_logger.info('Completed training. Write sequence logos..')
 
     #Write results
-    pwm_global = model0.get_pwm_global()
-    pwm_global.write_to_file(job_directory + 'recovered_pwm_global.txt')
-    pwm_global.write_weblogo(job_directory + 'recovered_pwm_global.png')
-    pwm_best_sequences = model0.get_pwm_best_sequences()
-    pwm_best_sequences.write_to_file(job_directory + 'recovered_pwm_best_sequences.txt')
-    pwm_best_sequences.write_weblogo(job_directory + 'recovered_pwm_best_sequences.png')
-    pwm_hairpin = model0.get_pwm_hairpin()
-    pwm_hairpin.write_to_file(job_directory + 'recovered_pwm_hairpin.txt')
-    pwm_hairpin.write_weblogo(job_directory + 'recovered_pwm_hairpin.png')
-    main_logger.info('Completed writing PWMs. Print model graph.')
+    pwm_global = model.get_pwm_global()
+    pwm_global.write_to_file(job_directory + 'logo_global.txt')
+    pwm_global.write_weblogo(job_directory + 'logo_global.png')
+    pwm_best_sequences = model.get_pwm_best_sequences()
+    pwm_best_sequences.write_to_file(job_directory + 'logo_best_sequences.txt')
+    pwm_best_sequences.write_weblogo(job_directory + 'logo_best_sequences.png')
+    pwm_hairpin = model.get_pwm_hairpin()
+    pwm_hairpin.write_to_file(job_directory + 'logo_hairpin.txt')
+    pwm_hairpin.write_weblogo(job_directory + 'logo_hairpin.png')
+    main_logger.info('Completed writing sequence logos. Print model graph..')
 
-    graph_path = job_directory + 'model_at_end.png'
-    model0.model.printAsGraph(graph_path, model0.sequence_container.get_length())
-    main_logger.info('Printed model graph: {0} Write model XML.'.format(graph_path))
+    graph_path = job_directory + 'final_graph.png'
+    model.model.printAsGraph(graph_path, model.sequence_container.get_length())
+    main_logger.info('Printed model graph: {0}. Write model file..'.format(graph_path))
 
-    xml_path = job_directory + 'model_at_end.xml'
-    model0.model.write(xml_path)
-    main_logger.info('Wrote model XML:' + xml_path)
+    xml_path = job_directory + 'final_model.xml'
+    model.model.write(xml_path)
+    main_logger.info('Wrote model file: ' + xml_path)
+    main_logger.info('Finished ssHMM successfully.')
 
 if __name__ == "__main__" :
     sys.exit(main(sys.argv))

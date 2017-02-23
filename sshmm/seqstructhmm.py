@@ -86,10 +86,10 @@ class SeqStructHMM:
         return m
 
 
-    def __init__(self, identifier, jobDirectory, mainLogger, numbersLogger, sequenceContainer, motifLength, flexibility, sample_size, temperature = 1.0, delta = 0.001):
-        self.identifier = identifier
+    def __init__(self, jobDirectory, mainLogger, numbersLogger, sequenceContainer, motifLength, flexibility,
+                 sample_size, temperature=1.0, delta=0.001):
         self.job_directory = jobDirectory
-        self.model_directory = '{jobDirectory}/model{identifier}/'.format(jobDirectory=self.job_directory, identifier=self.identifier)
+        self.model_directory = self.job_directory
         self.main_logger = mainLogger
         self.numbers_logger = numbersLogger
         self.sequence_container = sequenceContainer
@@ -103,7 +103,6 @@ class SeqStructHMM:
         self.iteration = 0
 
         #Create output directory for this model
-        os.mkdir(self.model_directory)
         os.mkdir('{modelDirectory}graphs'.format(modelDirectory=self.model_directory))
         os.mkdir('{modelDirectory}models'.format(modelDirectory=self.model_directory))
 
@@ -236,7 +235,7 @@ class SeqStructHMM:
                             progressMade = True
 
                     if not progressMade:
-                        self.main_logger.info("Break model %s after %s iterations", 0, self.getIteration())
+                        self.main_logger.info("Terminate model after %s iterations.", self.getIteration())
                         last_model = last_models.as_list()[-1]
                         return last_model
 
@@ -279,13 +278,11 @@ class SeqStructHMM:
 
 
     def output_current_statistics(self):
-        self.main_logger.info('Generate output for iteration %s', self.iteration)
-
         #output loglikelihoods
         sequence_likelihood = self.calculate_sequence_loglikelihood()
         seq_str_likelihood = self.calculateSequenceStructureLoglikelihood()
-        self.main_logger.info('Current sequence loglikelihood: %s', sequence_likelihood)
-        self.main_logger.info('Current sequence+structure loglikelihood: %s', seq_str_likelihood)
+        self.main_logger.info('[Iteration {0}] Sequence loglikelihood: {1}'.format(self.iteration, sequence_likelihood))
+        self.main_logger.info('[Iteration {0}] Sequence-structure loglikelihood: {1}'.format(self.iteration, seq_str_likelihood))
 
         #output information contents
         (ic_1000_sequence, ic_1000_structure, ic_1000_combined) = self.calculate_information_contents_1000_sequences()
@@ -293,13 +290,13 @@ class SeqStructHMM:
         ic_global_structure = self.model.calculateInformationContentStructure(self.sequence_container.get_length())
         ic_global_combined = self.model.calculateInformationContentCombined(self.sequence_container.get_length())
 
-        self.main_logger.info('Average IC of sequence per position (1000 sequences): %s', sum(ic_1000_sequence) / float(self.motif_length))
-        self.main_logger.info('Average IC of structure per position (1000 sequences): %s', sum(ic_1000_structure) / float(self.motif_length))
-        self.main_logger.info('Average IC of sequence + structure per position (1000 sequences): %s', sum(ic_1000_combined) / float(self.motif_length))
+        self.main_logger.info('[Iteration {0}] Avg. IC of sequence per position (top 1000 sequences): {1}'.format(self.iteration, sum(ic_1000_sequence) / float(self.motif_length)))
+        self.main_logger.info('[Iteration {0}] Avg. IC of structure per position (top 1000 sequences): {1}'.format(self.iteration, sum(ic_1000_structure) / float(self.motif_length)))
+        self.main_logger.info('[Iteration {0}] Avg. IC of sequence-structure per position (top 1000 sequences): {1}'.format(self.iteration, sum(ic_1000_combined) / float(self.motif_length)))
 
-        self.main_logger.info('Average IC of sequence per position (global weighted average from HMM): %s', sum(ic_global_sequence) / float(self.motif_length))
-        self.main_logger.info('Average IC of structure per position (global weighted average from HMM): %s', sum(ic_global_structure) / float(self.motif_length))
-        self.main_logger.info('Average IC of sequence + structure per position (global weighted average from HMM): %s', sum(ic_global_combined) / float(self.motif_length))
+        self.main_logger.info('[Iteration {0}] Avg. IC of sequence per position (model): {1}'.format(self.iteration, sum(ic_global_sequence) / float(self.motif_length)))
+        self.main_logger.info('[Iteration {0}] Avg. IC of structure per position (model): {1}'.format(self.iteration, sum(ic_global_structure) / float(self.motif_length)))
+        self.main_logger.info('[Iteration {0}] Avg. IC of sequence-structure per position (model): {1}'.format(self.iteration, sum(ic_global_combined) / float(self.motif_length)))
 
         #output key statistics into concise logger
         self.numbers_logger.info("{0},{1},{2},{3},{4},{5},{6},{7},{8}".format(self.iteration, sequence_likelihood, seq_str_likelihood,

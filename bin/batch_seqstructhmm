@@ -54,7 +54,7 @@ def parseArguments(args):
 
 def do_training_for_configuration(data_directory, batch_job_directory, protein, structure_type, motif_length, baum_welch, flexibility, block_size, termination_interval, threshold):
     # Create output directory for job
-    job_directory = '{0}/{1}_{2}_ml{3}_fl{4}_bs{5}_ti{6}_tt{7}'.format(batch_job_directory, protein, structure_type, motif_length, flexibility, block_size, termination_interval, threshold)
+    job_directory = '{0}/{1}_{2}_ml{3}_fl{4}_bs{5}_ti{6}_tt{7}/'.format(batch_job_directory, protein, structure_type, motif_length, flexibility, block_size, termination_interval, threshold)
     os.mkdir(job_directory)
 
     random.seed() #reinitialize the random number generator because else random numbers would repeat
@@ -70,29 +70,33 @@ def do_training_for_configuration(data_directory, batch_job_directory, protein, 
     main_logger.info('Read %s training sequences', training_sequence_container.get_length())
 
     # Initialize model
-    model0 = SeqStructHMM(0, job_directory, main_logger, numbers_logger, training_sequence_container, motif_length, flexibility, block_size)
+    model = SeqStructHMM(job_directory, main_logger, numbers_logger, training_sequence_container, motif_length,
+                          flexibility, block_size)
     if baum_welch:
         best_baumwelch_sequence_model = seq_hmm.find_best_baumwelch_sequence_models(motif_length,
                                                                                      training_sequence_container,
                                                                                      main_logger)
         best_viterbi_paths = best_baumwelch_sequence_model[1]
-        model0.prepare_model_with_viterbi(best_viterbi_paths)
+        model.prepare_model_with_viterbi(best_viterbi_paths)
     else:
-        model0.prepare_model_randomly()
+        model.prepare_model_randomly()
 
     # Train model
-    key_statistics = model0.do_training(termination_interval, threshold, write_model_state=True)[0]
+    key_statistics = model.do_training(termination_interval, threshold, write_model_state=True)[0]
 
     # Write results
-    pwm_global = model0.get_pwm_global()
-    pwm_global.write_to_file(job_directory + 'recovered_pwm_global.txt')
-    pwm_global.write_weblogo(job_directory + 'recovered_pwm_global.png')
-    pwm_best_sequences = model0.get_pwm_best_sequences()
-    pwm_best_sequences.write_to_file(job_directory + 'recovered_pwm_best_sequences.txt')
-    pwm_best_sequences.write_weblogo(job_directory + 'recovered_pwm_best_sequences.png')
+    pwm_global = model.get_pwm_global()
+    pwm_global.write_to_file(job_directory + 'logo_global.txt')
+    pwm_global.write_weblogo(job_directory + 'logo_global.png')
+    pwm_best_sequences = model.get_pwm_best_sequences()
+    pwm_best_sequences.write_to_file(job_directory + 'logo_best_sequences.txt')
+    pwm_best_sequences.write_weblogo(job_directory + 'logo_best_sequences.png')
+    pwm_hairpin = model.get_pwm_hairpin()
+    pwm_hairpin.write_to_file(job_directory + 'logo_hairpin.txt')
+    pwm_hairpin.write_weblogo(job_directory + 'logo_hairpin.png')
 
-    model0.model.printAsGraph(job_directory + 'model_at_end.png', model0.sequence_container.get_length())
-    model0.model.write(job_directory + 'model_at_end.xml')
+    model.model.printAsGraph(job_directory + 'final_graph.png', model.sequence_container.get_length())
+    model.model.write(job_directory + 'final_model.xml')
     return [protein] + key_statistics
 
 
@@ -117,12 +121,15 @@ def main(args):
     jobs = itertools.product([options.data_directory], [batch_job_directory], proteins, [options.structure_type],
                                               [options.motif_length], [True], [options.flexibility],
                                               [options.block_size], [options.termination_interval], [options.threshold])
+    batch_logger.info('Started batch run on {0} proteins.'.format(len(proteins)))
 
     #Determine number of cores to use
     if options.cores:
         pool_size = options.cores
     else:
         pool_size = min(multiprocessing.cpu_count() - 1, len(proteins))
+
+    batch_logger.info('Using {0} cores.'.format(pool_size))
     pool = multiprocessing.Pool(processes=pool_size,
                                 initializer=start_process,
                                 initargs=[batch_logger],
@@ -134,10 +141,11 @@ def main(args):
     pool.close() # no more tasks
     pool.join()  # wrap up current tasks
 
-    batch_logger.info('All jobs done! Results:')
-    batch_logger.info('protein,iteration_number,sequence_ll,sequence_structure_ll')
+    batch_logger.info('Finished all proteins.')
+    batch_logger.info('Result statistics:')
+    batch_logger.info('\t'.join(['Protein', 'Number of iterations', 'Sequence loglikelihood', 'Sequence-structure loglikelihood']))
     for configuration in results:
-        batch_logger.info(','.join(map(str, configuration)))
+        batch_logger.info('\t'.join(map(str, configuration)))
 
 if __name__ == "__main__" :
     sys.exit(main(sys.argv))
