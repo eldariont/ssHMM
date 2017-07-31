@@ -27,7 +27,7 @@ def parseArguments(args):
     args -- command-line arguments to the program"""
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""Prepare a CLIP-Seq dataset in BED format for the training of an ssHMM. The following preprocessing steps are taken:
-1 - Filter (positive) BED file, 2 - Shuffle (positive) BED file to generate negative dataset, 3 - Enlongate positive and negative BED files for later structure prediction, 4 - Fetch genomic sequences for elongated BED files, 5 - Produce FASTA files with genomic sequences in viewpoint format, 6 - Calculate RNA shapes, 7 - Calculate RNA structures
+1 - Filter (positive) BED file, 2 - Shuffle (positive) BED file to generate negative dataset, 3 - Elongate positive and negative BED files for later structure prediction, 4 - Fetch genomic sequences for elongated BED files, 5 - Produce FASTA files with genomic sequences in viewpoint format, 6 - Calculate RNA shapes, 7 - Calculate RNA structures
 
 This script requires awk, bedtools (shuffle, slop, getfasta), RNAshapes, and RNAstructures.
 
@@ -125,6 +125,7 @@ def checkPrereqs():
 
 def prepareFolderStructure(directory, proteinName):
     if not os.path.exists(directory):
+        print>>sys.stderr, 'ERROR: Directory \'{0}\' not found.'.format(directory)
         return False
     if not os.path.exists(directory + '/bed/' + proteinName):
         os.makedirs(directory + '/bed/' + proteinName)
@@ -139,55 +140,104 @@ def prepareFolderStructure(directory, proteinName):
     return True
 
 def filteringBed(filteredBedFileName, rawBedFileName, lowest_score, min_length, max_length):
-    print>>sys.stderr, '-->Filtering', rawBedFileName
+    print>>sys.stderr, '###STEP 1: Filtering positive raw bed-file'
+    print>>sys.stderr, 'INPUT:', rawBedFileName
+    print>>sys.stderr, 'OUTPUT:', filteredBedFileName
+    
     filteredBedFile = open(filteredBedFileName, 'w')
     #filter for max length, min length, and min score
     call(['awk', '{{if ($3-$2 <= {0} && $3-$2 >= {1} && $5 >= {2}) {{print $0}}}}'.format(max_length, min_length, lowest_score), rawBedFileName], stdout=filteredBedFile)
     filteredBedFile.close()
-    print>>sys.stderr, 'Written', filteredBedFileName
+    num_filtered = sum(1 for line in open(filteredBedFileName))
+    
+    print>>sys.stderr, 'STEP 1 finished (filtering resulted in {0} good binding sites)'.format(num_filtered)
 
-def shuffleBed(bedPositiveFileName, bedHg19FileName, bedGenesFileName, bedNegativeFileName):
-    print>>sys.stderr, '-->Shuffeling', bedPositiveFileName    
+def shuffleBed(bedPositiveFileName, bedHg19FileName, genesFileName, bedNegativeFileName):
+    print>>sys.stderr, '###STEP 2: Shuffling positive binding sites to obtain negative binding sites'
+    print>>sys.stderr, 'INPUT:', bedPositiveFileName
+    print>>sys.stderr, 'OUTPUT:', bedNegativeFileName  
+    
     bedNegativeFile = open(bedNegativeFileName, 'w')
-    call(['bedtools', 'shuffle', '-i', bedPositiveFileName, '-g', bedHg19FileName, '-incl', bedGenesFileName], stdout=bedNegativeFile)
+    call(['bedtools', 'shuffle', '-i', bedPositiveFileName, '-g', bedHg19FileName, '-incl', genesFileName], stdout=bedNegativeFile)
     bedNegativeFile.close()
-    print>>sys.stderr, 'Written', bedNegativeFileName
+    
+    print>>sys.stderr, 'STEP 2 finished'
 
-def elongatingBed(bedIntervalLongFileName, bedHg19FileName, bedIntervalFileName, elongation):
+def elongatingBed(bedIntervalLongFileName, genomeFileName, bedIntervalFileName, elongation):
     bedIntervalLongFile = open(bedIntervalLongFileName, 'w')
-    print>>sys.stderr, '-->Elongating', bedIntervalFileName
-    call(['bedtools', 'slop', '-i', bedIntervalFileName, '-g', bedHg19FileName, '-b', str(elongation)], stdout=bedIntervalLongFile)
+    print>>sys.stderr, '###STEP 3: Elongating binding sites by', elongation, 'nt for structure prediction'
+    print>>sys.stderr, 'INPUT:', bedIntervalFileName
+    print>>sys.stderr, 'OUTPUT:', bedIntervalLongFileName
+    
+    call(['bedtools', 'slop', '-i', bedIntervalFileName, '-g', genomeFileName, '-b', str(elongation)], stdout=bedIntervalLongFile)
     bedIntervalLongFile.close()
-    print>>sys.stderr, 'Written', bedIntervalLongFileName
+    
+    print>>sys.stderr, 'STEP 3 finished'
 
-def fetchingSequences(fastaHg19FileName, fastaTempFileName, bedIntervalLongFileName):
-    print>>sys.stderr, '-->Fetching nucleotide sequence for', bedIntervalLongFileName
-    call(['fastaFromBed', '-s', '-fi', fastaHg19FileName, '-bed', bedIntervalLongFileName, '-fo', fastaTempFileName])
-    print>>sys.stderr, 'Written', fastaTempFileName
+def fetchingSequences(genomeFastaFileName, fastaTempFileName, bedIntervalLongFileName):
+    print>>sys.stderr, '###STEP 4: Fetching nucleotide sequence for elongated binding sites'
+    print>>sys.stderr, 'INPUT:', bedIntervalLongFileName
+    print>>sys.stderr, 'OUTPUT:', fastaTempFileName
+    
+    call(['fastaFromBed', '-s', '-fi', genomeFastaFileName, '-bed', bedIntervalLongFileName, '-fo', fastaTempFileName])
+    
+    print>>sys.stderr, 'STEP 4 finished'
 
-def formatFasta(fastaFormattedFileName, bedIntervalFileName, bedIntervalLongFileName, fastaTempFileName):
+def formatFasta(fastaFormattedFileName, bedIntervalFileName, bedIntervalLongFileName, fastaTempFileName, genome):
+    print>>sys.stderr, '###STEP 5: Reformatting nucleotide sequences into viewpoint format (binding sites in uppercase, elongation in lowercase)'
+    print>>sys.stderr, 'INPUT:', fastaTempFileName
+    print>>sys.stderr, 'OUTPUT:', fastaFormattedFileName
+    
     fastaTempFile = open(fastaTempFileName, 'r')
     fastaFormattedFile = open(fastaFormattedFileName, 'w')
-    print>>sys.stderr, '-->Format FASTA file', fastaTempFileName, 'into viewpoint format'
+    line = 0
     with open(bedIntervalFileName, 'r') as bedIntervalFile, open(bedIntervalLongFileName, 'r') as bedIntervalLongFile: 
         for x, y in izip(bedIntervalFile, bedIntervalLongFile):
+            line += 1
             intervalFields = x.strip().split('\t')
             intervalLongFields = y.strip().split('\t')
-            before = int(intervalFields[1]) - int(intervalLongFields[1])
-            viewpoint = int(intervalFields[2]) - int(intervalFields[1])
-            after = int(intervalLongFields[2]) - int(intervalFields[2])
+            elongationUpstream = int(intervalFields[1]) - int(intervalLongFields[1])
+            viewpointLength = int(intervalFields[2]) - int(intervalFields[1])
+            elongationDownstream = int(intervalLongFields[2]) - int(intervalFields[2])
+            totalBindingSiteLength = int(intervalLongFields[2]) - int(intervalLongFields[1])
 
             header = fastaTempFile.readline().strip()
             sequence = fastaTempFile.readline().strip()
-            if len(sequence) == before + viewpoint + after:
-                formattedSequence = sequence[:before].lower() + sequence[before:before + viewpoint].upper() + sequence[before + viewpoint:].lower()
+            if totalBindingSiteLength <= 0:
+                print>>sys.stderr, 'ERROR: Malformed elongated binding site (line {0})'.format(line)
+                print>>sys.stderr, 'The start of the elongated binding site ({0}: {1}-{2}) is greater than its end'.format(
+                    intervalLongFields[0], int(intervalLongFields[1]), int(intervalLongFields[2]))
+                print>>sys.stderr, 'A common cause for this error is a mismatch in genome version between the bed-files and the \'genome\' parameter to this script. Check whether your binding sites are on {0}. If not, change the \'genome\' parameter accordingly.'.format(genome)
+                
+                cont = raw_input("Stop script (y/n)?")
+                if cont == 'y':
+                    return False
+            elif totalBindingSiteLength != elongationUpstream + viewpointLength + elongationDownstream:
+                print>>sys.stderr, 'ERROR: Binding sites in bed-files do not match correctly (line {0})'.format(line)
+                print>>sys.stderr, 'The elongated binding site ({0}: {1}-{2}) does not contain the original binding site ({3}: {4}-{5})'.format(
+                    intervalLongFields[0], int(intervalLongFields[1]), int(intervalLongFields[2]), int(intervalFields[0]), int(intervalFields[1]), int(intervalFields[2]))
+                print>>sys.stderr, 'A common cause for this error is a mismatch in genome version between the bed-files and the \'genome\' parameter to this script. Check whether your binding sites are on {0}. If not, change the \'genome\' parameter accordingly.'.format(genome)
+                
+                cont = raw_input("Stop script (y/n)?")
+                if cont == 'y':
+                    return False
+            elif len(sequence) != totalBindingSiteLength:
+                print>>sys.stderr, 'ERROR: Binding site in bed-files does not match with the corresponding nucleotide sequence (line {0} in bed-files, sequence \'{1}\' in nucleotide sequence file)'.format(line, sequence)
+                print>>sys.stderr, 'The length of the elongated binding site ({0} nt) is unequal to the length of the nucleotide sequence ({1} nt)'.format(totalBindingSiteLength, len(sequence))
+                
+                cont = raw_input("Stop script (y/n)?")
+                if cont == 'y':
+                    return False
+            else:
+                formattedSequence = sequence[:elongationUpstream].lower() + sequence[elongationUpstream:elongationUpstream + viewpointLength].upper() + sequence[elongationUpstream + viewpointLength:].lower()
                 print>>fastaFormattedFile, header
                 print>>fastaFormattedFile, formattedSequence
-            else:
-                print>>sys.stderr, 'Error in formatFasta(): sequence length not identical with before + viewpoint + after.', before, viewpoint, after, len(sequence)
     fastaFormattedFile.close()
     fastaTempFile.close()
-    print>>sys.stderr, 'Written', fastaFormattedFileName
+    
+    print>>sys.stderr, 'STEP 5 finished'
+    
+    return True
 
 
 def main(args):
@@ -198,8 +248,8 @@ def main(args):
         return
 
     #Prepare folder structure
-    if not(prepareFolderStructure(options.directory, options.dataset_name)):
-        print>>sys.stderr, 'ERROR: Given directory not found.'
+    if not(prepareFolderStructure(options.directory, options.dataset_name)):        
+        return
 
     #Filtering bed
     bedFileName = options.directory + '/bed/' + options.dataset_name + '/positive_raw.bed'
@@ -208,64 +258,90 @@ def main(args):
         filteringBed(bedPositiveFileName, bedFileName, options.min_score, options.min_length, options.max_length)
 
     #Genome paths
-    bedHgFileName = '{0}/genomes/{1}/{1}.genome'.format(options.directory, options.genome)
-    bedGenesFileName = '{0}/genomes/{1}/UCSCGenesTrack.bed'.format(options.directory, options.genome)
-    fastaHgFileName = '{0}/genomes/{1}/{1}.fa'.format(options.directory, options.genome)
+    genomeFileName = '{0}/genomes/{1}/{1}.genome'.format(options.directory, options.genome)
+    genesFileName = '{0}/genomes/{1}/UCSCGenesTrack.bed'.format(options.directory, options.genome)
+    genomeFastaFileName = '{0}/genomes/{1}/{1}.fa'.format(options.directory, options.genome)
 
     #Shuffle positive bed to get negative bed
     bedNegativeFileName = options.directory + '/bed/' + options.dataset_name + '/negative.bed'
     if options.jump_to <= 2:
-        shuffleBed(bedPositiveFileName, bedHgFileName, bedGenesFileName, bedNegativeFileName)
+        shuffleBed(bedPositiveFileName, genomeFileName, genesFileName, bedNegativeFileName)
 
     #Elongate positive bed
     bedPositiveLongFileName = options.directory + '/bed/' + options.dataset_name + '/positive_long.bed'
     if options.jump_to <= 3:
-        elongatingBed(bedPositiveLongFileName, bedHgFileName, bedPositiveFileName, options.elongation)
+        elongatingBed(bedPositiveLongFileName, genomeFileName, bedPositiveFileName, options.elongation)
 
     #Elongate negative bed
     bedNegativeLongFileName = options.directory + '/bed/' + options.dataset_name + '/negative_long.bed'
     if options.jump_to <= 3:
-        elongatingBed(bedNegativeLongFileName, bedHgFileName, bedNegativeFileName, options.elongation)
+        elongatingBed(bedNegativeLongFileName, genomeFileName, bedNegativeFileName, options.elongation)
 
     #Fetch positive sequences
     fastaTempPositiveFileName = options.directory + '/temp/' + options.dataset_name + '/positive_long.fasta'
     if options.jump_to <= 4:
-        fetchingSequences(fastaHgFileName, fastaTempPositiveFileName, bedPositiveLongFileName)
+        fetchingSequences(genomeFastaFileName, fastaTempPositiveFileName, bedPositiveLongFileName)
 
     #Fetch negative sequences
     fastaTempNegativeFileName = options.directory + '/temp/' + options.dataset_name + '/negative_long.fasta'
     if options.jump_to <= 4:
-        fetchingSequences(fastaHgFileName, fastaTempNegativeFileName, bedNegativeLongFileName)
+        fetchingSequences(genomeFastaFileName, fastaTempNegativeFileName, bedNegativeLongFileName)
 
     #Format positive FASTA
     fastaPositiveFileName = options.directory + '/fasta/' + options.dataset_name + '/positive.fasta'
     if options.jump_to <= 5:
-        formatFasta(fastaPositiveFileName, bedPositiveFileName, bedPositiveLongFileName, fastaTempPositiveFileName)
+        if not formatFasta(fastaPositiveFileName, bedPositiveFileName, bedPositiveLongFileName, fastaTempPositiveFileName, options.genome):
+            return
 
     #Format negative FASTA
     fastaNegativeFileName = options.directory + '/fasta/' + options.dataset_name + '/negative.fasta'
     if options.jump_to <= 5:
-        formatFasta(fastaNegativeFileName, bedNegativeFileName, bedNegativeLongFileName, fastaTempNegativeFileName)
+        if not formatFasta(fastaNegativeFileName, bedNegativeFileName, bedNegativeLongFileName, fastaTempNegativeFileName, options.genome):
+            return
 
     #Calculate positive RNA shapes
     shapePositiveFileName = options.directory + '/shapes/' + options.dataset_name + '/positive.txt'
     if options.jump_to <= 6:
+        print>>sys.stderr, '###STEP 6: Calculating RNAshapes'
+        print>>sys.stderr, 'INPUT:', fastaPositiveFileName
+        print>>sys.stderr, 'OUTPUT:', shapePositiveFileName
+        
         calculate_rna_shapes_from_file(shapePositiveFileName, fastaPositiveFileName)
+        
+        print>>sys.stderr, 'STEP 6 finished'
 
     #Calculate negative RNA shapes
     shapeNegativeFileName = options.directory + '/shapes/' + options.dataset_name + '/negative.txt'
     if options.jump_to <= 6:
+        print>>sys.stderr, '###STEP 6: Calculating RNAshapes'
+        print>>sys.stderr, 'INPUT:', fastaPositiveFileName
+        print>>sys.stderr, 'OUTPUT:', shapePositiveFileName
+        
         calculate_rna_shapes_from_file(shapeNegativeFileName, fastaNegativeFileName)
+        
+        print>>sys.stderr, 'STEP 6 finished'
 
     #Calculate positive RNA structures
     structuresPositiveFileName = options.directory + '/structures/' + options.dataset_name + '/positive.txt'
     if options.jump_to <= 7:
+        print>>sys.stderr, '###STEP 7: Calculating RNAstructures'
+        print>>sys.stderr, 'INPUT:', fastaPositiveFileName
+        print>>sys.stderr, 'OUTPUT:', structuresPositiveFileName
+        
         calculate_rna_structures_from_file(structuresPositiveFileName, fastaPositiveFileName)
+        
+        print>>sys.stderr, 'STEP 7 finished'
 
     #Calculate negative RNA structures
     structuresNegativeFileName = options.directory + '/structures/' + options.dataset_name + '/negative.txt'
     if options.jump_to <= 7:
+        print>>sys.stderr, '###STEP 7: Calculating RNAstructures'
+        print>>sys.stderr, 'INPUT:', fastaPositiveFileName
+        print>>sys.stderr, 'OUTPUT:', structuresNegativeFileName
+        
         calculate_rna_structures_from_file(structuresNegativeFileName, fastaNegativeFileName)
+        
+        print>>sys.stderr, 'STEP 7 finished'
 
 if __name__ == "__main__" :
     sys.exit(main(sys.argv))

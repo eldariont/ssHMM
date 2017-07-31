@@ -15,7 +15,6 @@ def translateIntoContexts(dotBracketString):
 
 def calculate_rna_shapes_from_file(output, fastaFileName):
     contextsFile = open(output, 'w')
-    print>>sys.stderr, '-->Calculate RNA shapes from', fastaFileName
 
     proc = Popen(['RNAshapes', '-r', '-o', '1', '-f', fastaFileName], stdout=PIPE, bufsize=-1)
     dotBracketPattern = re.compile('[\(\)\.]+')
@@ -33,8 +32,6 @@ def calculate_rna_shapes_from_file(output, fastaFileName):
                 contexts = translateIntoContexts(firstField)
                 prob = float(fields[2][1:-1])
                 print>>contextsFile, contexts, prob
-
-    print>>sys.stderr, 'Written RNA shapes', output
 
 
 def calculate_rna_shapes_from_sequence(nucleotide_sequence):
@@ -60,7 +57,6 @@ def calculate_rna_shapes_from_sequence(nucleotide_sequence):
 
 def calculate_rna_structures_from_file(output, fastaFileName):
     contextsFile = open(output, 'w')
-    print>>sys.stderr, 'Calculate RNA structures from', fastaFileName
 
     fastaFile = open(fastaFileName, 'r')
     for line in fastaFile:
@@ -107,7 +103,6 @@ def calculate_rna_structures_from_file(output, fastaFileName):
                 os.remove(seq_filename)
                 os.remove(ct_filename)
                 os.remove(dot_filename)
-    print>>sys.stderr, 'Written RNA structures', output
 
 
 def calculate_rna_structures_from_sequence(nucleotide_sequence):
