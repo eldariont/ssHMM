@@ -306,7 +306,7 @@ def main(args):
         print>>sys.stderr, 'INPUT:', fastaPositiveFileName
         print>>sys.stderr, 'OUTPUT:', shapePositiveFileName
         
-        calculate_rna_shapes_from_file(shapePositiveFileName, fastaPositiveFileName)
+        calculate_rna_shapes_from_file(shapePositiveFileName, fastaPositiveFileName, 10)
         
         print>>sys.stderr, 'STEP 6 finished'
 
@@ -317,7 +317,7 @@ def main(args):
         print>>sys.stderr, 'INPUT:', fastaPositiveFileName
         print>>sys.stderr, 'OUTPUT:', shapePositiveFileName
         
-        calculate_rna_shapes_from_file(shapeNegativeFileName, fastaNegativeFileName)
+        calculate_rna_shapes_from_file(shapeNegativeFileName, fastaNegativeFileName, 10)
         
         print>>sys.stderr, 'STEP 6 finished'
 

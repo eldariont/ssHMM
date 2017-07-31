@@ -13,7 +13,7 @@ def translateIntoContexts(dotBracketString):
     contextString = contextString1.replace('T', 'E')
     return contextString
 
-def calculate_rna_shapes_from_file(output, fastaFileName):
+def calculate_rna_shapes_from_file(output, fastaFileName, shapesPerSequence):
     contextsFile = open(output, 'w')
 
     proc = Popen(['RNAshapes', '-r', '-o', '1', '-f', fastaFileName], stdout=PIPE, bufsize=-1)
@@ -26,12 +26,15 @@ def calculate_rna_shapes_from_file(output, fastaFileName):
         firstField = fields[0]
         if firstField.startswith('>'):
             print>>contextsFile, firstField
+            num_shapes = 0
         else:
             match1 = dotBracketPattern.search(firstField)
             if match1 and match1.end() == len(firstField):
-                contexts = translateIntoContexts(firstField)
-                prob = float(fields[2][1:-1])
-                print>>contextsFile, contexts, prob
+                num_shapes += 1
+                if num_shapes <= shapesPerSequence:
+                    contexts = translateIntoContexts(firstField)
+                    prob = float(fields[2][1:-1])
+                    print>>contextsFile, contexts, prob
 
 
 def calculate_rna_shapes_from_sequence(nucleotide_sequence):
