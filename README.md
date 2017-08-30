@@ -18,11 +18,14 @@ Below, you find an example output of ssHMM. After training on an RBP dataset, th
 
 ### Documentation
 
-Check out our documentation: http://sshmm.readthedocs.io
+ssHMM can be installed manually as a Python package or (more simply) as a Docker image. Check out our documentation: http://sshmm.readthedocs.io
+
+### Contact
+If you experience problems or have suggestions please contact heller_d@molgen.mpg.de. Alternatively, you are welcome to create issues or pull requests on our github.com repository: http://github.com/eldariont/sshmm.
 
 ### Citation
 
-Heller, D., Krestel, R., Ohler, U., Vingron, M., & Marsico, A. (2016). ssHMM: [Extracting intuitive sequence-structure motifs from high-throughput RNA-binding protein data](http://dx.doi.org/10.1101/076034). bioRxiv, 076034.
+David Heller, Ralf Krestel, Uwe Ohler, Martin Vingron, Annalisa Marsico; ssHMM: extracting intuitive sequence-structure motifs from high-throughput RNA-binding protein data, Nucleic Acids Research, gkx756, https://doi.org/10.1093/nar/gkx756
 
 ### License
 
