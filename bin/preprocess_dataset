@@ -4,7 +4,7 @@ import sys
 import argparse
 import threading
 import os
-from subprocess import call, check_call
+from subprocess import call, check_call, CalledProcessError
 from itertools import izip
 from sshmm.structure_prediction import calculate_rna_shapes_from_file, calculate_rna_structures_from_file
 
@@ -91,14 +91,10 @@ def checkPrereqs():
             raise
 
     try:
-        check_call(["awk", "-V"], stdout=devnull, stderr=devnull)
-    except OSError as e:
-        if e.errno == os.errno.ENOENT:
-            print>>sys.stderr, "ERROR: awk not found. Tried to execute 'awk -V'."
-            return False
-        else:
-            # Something else went wrong while trying to run `awk`
-            raise
+        check_call(["which", "awk"], stdout=devnull, stderr=devnull)
+    except CalledProcessError as e:
+        print>>sys.stderr, "ERROR: awk not found. Tried to execute 'which awk'."
+        return False
 
     try:
         check_call(["RNAshapes", "-v"], stdout=devnull, stderr=devnull)
