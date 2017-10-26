@@ -76,6 +76,7 @@ The version of the genome can be given as an optional parameter. It defaults to 
     parser.add_argument('--min_length', type=int, default=8, help='minimum binding site length (default: 8)')
     parser.add_argument('--max_length', type=int, default=75, help='maximum binding site length (default: 75)')
     parser.add_argument('--elongation', '-e', type=int, default=20, help='span for up- and downstream elongation of binding sites (default: 20)')
+    parser.add_argument('--skip_check', '-s', action='store_true', help='skip check for installed prerequisites')
     return parser.parse_args()
 
 def checkPrereqs():
@@ -238,7 +239,7 @@ def main(args):
     options = parseArguments(args)
 
     #Check required programs bedtools, RNAshapes, and RNAstructures
-    if not checkPrereqs():
+    if not options.skip_check and not checkPrereqs():
         return
 
     #Prepare folder structure
