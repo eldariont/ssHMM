@@ -126,11 +126,18 @@ def prepareFolderStructure(directory, proteinName):
         os.makedirs(directory + '/structures/' + proteinName)
     return True
 
-def filteringBed(filteredBedFileName, rawBedFileName, lowest_score, min_length, max_length):
+def filteringBed(filteredBedFileName, rawBedFileName, genomeFileName, lowest_score, min_length, max_length):
     print>>sys.stderr, '###STEP 1: Filtering positive raw bed-file'
     print>>sys.stderr, 'INPUT:', rawBedFileName
     print>>sys.stderr, 'OUTPUT:', filteredBedFileName
     
+    #Read chromosome names from genome file
+    genomeFile = open(genomeFileName, 'r')
+    chromosomes = set()
+    for line in genomeFile:
+        chromosomes.add(line.strip().split()[0])
+    genomeFile.close()
+
     rawBed = open(rawBedFileName, 'r')
     filteredBed = open(filteredBedFileName, 'w')
     num_filtered = 0
@@ -138,8 +145,11 @@ def filteringBed(filteredBedFileName, rawBedFileName, lowest_score, min_length, 
         fields = line.strip().split()
         siteLength = int(fields[2]) - int(fields[1])
         if siteLength <= max_length and siteLength >= min_length and float(fields[4]) >= lowest_score:
-            print>>filteredBed, line.strip()
-            num_filtered += 1
+            if fields[0] in chromosomes:
+                print>>filteredBed, line.strip()
+                num_filtered += 1
+            else:
+                print>>sys.stderr, 'WARNING: Raw bed-file contains unknown chromosome \'{0}\' that is not contained in \'{1}\'. Skipped this line.'.format(fields[0], genomeFileName)
 
     #filter for max length, min length, and min score
     rawBed.close()
@@ -246,16 +256,16 @@ def main(args):
     if not(prepareFolderStructure(options.directory, options.dataset_name)):        
         return
 
-    #Filtering bed
-    bedFileName = options.directory + '/bed/' + options.dataset_name + '/positive_raw.bed'
-    bedPositiveFileName = options.directory + '/bed/' + options.dataset_name + '/positive.bed'
-    if options.jump_to <= 1:
-        filteringBed(bedPositiveFileName, bedFileName, options.min_score, options.min_length, options.max_length)
-
     #Genome paths
     genomeFileName = '{0}/genomes/{1}/{1}.genome'.format(options.directory, options.genome)
     genesFileName = '{0}/genomes/{1}/UCSCGenesTrack.bed'.format(options.directory, options.genome)
     genomeFastaFileName = '{0}/genomes/{1}/{1}.fa'.format(options.directory, options.genome)
+
+    #Filtering bed
+    bedFileName = options.directory + '/bed/' + options.dataset_name + '/positive_raw.bed'
+    bedPositiveFileName = options.directory + '/bed/' + options.dataset_name + '/positive.bed'
+    if options.jump_to <= 1:
+        filteringBed(bedPositiveFileName, bedFileName, genomeFileName, options.min_score, options.min_length, options.max_length)
 
     #Shuffle positive bed to get negative bed
     bedNegativeFileName = options.directory + '/bed/' + options.dataset_name + '/negative.bed'
