@@ -29,7 +29,7 @@ def parseArguments(args):
                                      description="""Prepare a CLIP-Seq dataset in BED format for the training of an ssHMM. The following preprocessing steps are taken:
 1 - Filter (positive) BED file, 2 - Shuffle (positive) BED file to generate negative dataset, 3 - Elongate positive and negative BED files for later structure prediction, 4 - Fetch genomic sequences for elongated BED files, 5 - Produce FASTA files with genomic sequences in viewpoint format, 6 - Calculate RNA shapes, 7 - Calculate RNA structures
 
-This script requires awk, bedtools (shuffle, slop, getfasta), RNAshapes, and RNAstructures.
+This script requires bedtools (shuffle, slop, getfasta), RNAshapes, and RNAstructures.
 
 A root directory for the datasets and a dataset name (e.g., the protein name) has to be given. The following files will be created in the root directory and its subdirectories:
 - /bed/<dataset_name>/positive_raw.bed - positive BED file from CLIP-Seq experiment
@@ -91,12 +91,6 @@ def checkPrereqs():
             raise
 
     try:
-        check_call(["which", "awk"], stdout=devnull, stderr=devnull)
-    except CalledProcessError as e:
-        print>>sys.stderr, "ERROR: awk not found. Tried to execute 'which awk'."
-        return False
-
-    try:
         check_call(["RNAshapes", "-v"], stdout=devnull, stderr=devnull)
     except OSError as e:
         if e.errno == os.errno.ENOENT:
@@ -107,15 +101,11 @@ def checkPrereqs():
             raise
 
     try:
-        check_call(["Fold", "-v"], stdout=devnull, stderr=devnull)
-        check_call(["ct2dot", "-v"], stdout=devnull, stderr=devnull)
-    except OSError as e:
-        if e.errno == os.errno.ENOENT:
-            print>>sys.stderr, "ERROR: RNAstructures not found. Tried to execute 'Fold -v' and 'ct2dot -v'."
-            return False
-        else:
-            # Something else went wrong while trying to run `RNAstructures`
-            raise
+        check_call(["which", "Fold"], stdout=devnull, stderr=devnull)
+        check_call(["which", "ct2dot"], stdout=devnull, stderr=devnull)
+    except CalledProcessError:
+        print>>sys.stderr, "ERROR: RNAstructure not found. Tried to execute 'which Fold' and 'which ct2dot'."
+        return False
 
     return True
 
@@ -140,11 +130,19 @@ def filteringBed(filteredBedFileName, rawBedFileName, lowest_score, min_length, 
     print>>sys.stderr, 'INPUT:', rawBedFileName
     print>>sys.stderr, 'OUTPUT:', filteredBedFileName
     
-    filteredBedFile = open(filteredBedFileName, 'w')
+    rawBed = open(rawBedFileName, 'r')
+    filteredBed = open(filteredBedFileName, 'w')
+    num_filtered = 0
+    for line in rawBed:
+        fields = line.strip().split()
+        siteLength = int(fields[2]) - int(fields[1])
+        if siteLength <= max_length and siteLength >= min_length and float(fields[4]) >= lowest_score:
+            print>>filteredBed, line.strip()
+            num_filtered += 1
+
     #filter for max length, min length, and min score
-    call(['awk', '{{if ($3-$2 <= {0} && $3-$2 >= {1} && $5 >= {2}) {{print $0}}}}'.format(max_length, min_length, lowest_score), rawBedFileName], stdout=filteredBedFile)
-    filteredBedFile.close()
-    num_filtered = sum(1 for line in open(filteredBedFileName))
+    rawBed.close()
+    filteredBed.close()
     
     print>>sys.stderr, 'STEP 1 finished (filtering resulted in {0} good binding sites)'.format(num_filtered)
 
@@ -239,7 +237,7 @@ def formatFasta(fastaFormattedFileName, bedIntervalFileName, bedIntervalLongFile
 def main(args):
     options = parseArguments(args)
 
-    #Check required programs bedtools, awk, RNAshapes, and RNAstructures
+    #Check required programs bedtools, RNAshapes, and RNAstructures
     if not checkPrereqs():
         return
 
