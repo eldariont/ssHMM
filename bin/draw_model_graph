@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+import argparse
+import sys
+
+from sshmm.MyHMM import MyHMMOpenXML
+
+def parseArguments(args):
+    """Sets up the command-line parser and calls it on the command-line arguments to the program.
+
+    arguments:
+    args -- command-line arguments to the program"""
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     description='Takes a ssHMM model file in XML format and produces a model graph in PNG format.')
+    parser.add_argument('model', type=str, help='model file in XML format')
+    parser.add_argument('sequence_number', type=int, help='number of training sequences that were used to generate the model. This number can be found in the verbose log file.')
+    parser.add_argument('output', type=str, help='model graph output')
+    return parser.parse_args()
+
+options = parseArguments(sys.argv)
+model = MyHMMOpenXML(options.model)
+model.printAsGraph(options.output, options.sequence_number)
+print "Success: Wrote model graph ", options.output

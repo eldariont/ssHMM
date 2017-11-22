@@ -679,5 +679,250 @@ class MyHMMFromMatricesFactory(HMMFactory):
             state.in_id = trans[1]
             state.in_a = trans[2]
 
+GHMM_FILETYPE_SMO = 'smo' #obsolete
+GHMM_FILETYPE_XML = 'xml'
+GHMM_FILETYPE_HMMER = 'hmm'
 
+class MyHMMOpenFactory(HMMFactory):
+    """ Opens a HMM from a file.
+
+    Currently four formats are supported:
+    HMMer, our smo file format, and two xml formats.
+    @note the support for smo files and the old xml format will phase out
+    """
+    def __init__(self, defaultFileType=None):
+        self.defaultFileType = defaultFileType
+
+    def guessFileType(self, filename):
+        """ guesses the file format from the filename """
+        if filename.endswith('.'+GHMM_FILETYPE_XML):
+            return GHMM_FILETYPE_XML
+        elif filename.endswith('.'+GHMM_FILETYPE_SMO):#obsolete
+            return GHMM_FILETYPE_SMO
+        elif filename.endswith('.'+GHMM_FILETYPE_HMMER):#obsolete
+            return GHMM_FILETYPE_HMMER
+        else:
+            return None
+
+    def __call__(self, fileName, modelIndex=None, filetype=None):
+
+        if not isinstance(fileName,StringIO.StringIO):
+            if not os.path.exists(fileName):
+                raise IOError('File ' + str(fileName) + ' not found.')
+
+        if not filetype:
+            if self.defaultFileType:
+                log.warning("HMMOpenHMMER, HMMOpenSMO and HMMOpenXML are deprecated. "
+                            + "Use HMMOpen and the filetype parameter if needed.")
+                filetype = self.defaultFileType
+            else:
+                filetype = self.guessFileType(fileName)
+            if not filetype:
+                raise WrongFileType("Could not guess the type of file " + str(fileName)
+                                    + " and no filetype specified")
+
+        # XML file: both new and old format
+        if filetype == GHMM_FILETYPE_XML:
+            # try to validate against ghmm.dtd
+            if ghmmwrapper.ghmm_xmlfile_validate(fileName):
+                return self.openNewXML(fileName, modelIndex)
+        elif filetype == GHMM_FILETYPE_SMO:
+            return self.openSMO(fileName, modelIndex)
+        elif filetype == GHMM_FILETYPE_HMMER:
+            return self.openHMMER(fileName)
+        else:
+            raise TypeError("Invalid file type " + str(filetype))
+
+
+    def openNewXML(self, fileName, modelIndex):
+        """ Open one ore more HMM in the new xml format """
+        # opens and parses the file
+        file = ghmmwrapper.ghmm_xmlfile_parse(fileName)
+        if file == None:
+            log.debug( "XML has file format problems!")
+            raise WrongFileType("file is not in GHMM xml format")
+
+        nrModels = file.noModels
+        modelType = file.modelType
+
+        # we have a continuous HMM, prepare for hmm creation
+        if (modelType & ghmmwrapper.kContinuousHMM):
+            emission_domain = Float()
+            if (modelType & ghmmwrapper.kMultivariate):
+                distribution = MultivariateGaussianDistribution
+                hmmClass = MultivariateGaussianMixtureHMM
+            else:
+                distribution = ContinuousMixtureDistribution
+                hmmClass = ContinuousMixtureHMM
+            getModel = file.get_cmodel
+
+        # we have a discrete HMM, prepare for hmm creation
+        elif ((modelType & ghmmwrapper.kDiscreteHMM)
+              and not (modelType & ghmmwrapper.kTransitionClasses)
+              and not (modelType & ghmmwrapper.kPairHMM)):
+            emission_domain = 'd'
+            distribution = DiscreteDistribution
+            getModel = file.get_dmodel
+            if (modelType & ghmmwrapper.kLabeledStates):
+                hmmClass = StateLabelHMM
+            else:
+                hmmClass = DiscreteEmissionHMM
+
+        # currently not supported
+        else:
+            raise UnsupportedFeature("Non-supported model type")
+
+
+        # read all models to list at first
+        result = []
+        for i in range(nrModels):
+            cmodel = getModel(i)
+            if emission_domain is 'd':
+                emission_domain = Alphabet(cmodel.alphabet)
+            if modelType & ghmmwrapper.kLabeledStates:
+                labelDomain = LabelDomain(cmodel.label_alphabet)
+                m = MyHMM(emission_domain, distribution(emission_domain), labelDomain, cmodel)
+            else:
+                m = MyHMM(emission_domain, distribution(emission_domain), cmodel)
+
+            result.append(m)
+
+        # for a single
+        if modelIndex != None:
+            if modelIndex < nrModels:
+                result = result[modelIndex]
+            else:
+                raise IndexError("the file %s has only %s models"% fileName, str(nrModels))
+        elif nrModels == 1:
+            result = result[0]
+
+        return result
+
+
+    def openSingleHMMER(self, fileName):
+        # HMMER format models
+        h = modhmmer.hmmer(fileName)
+
+        if h.m == 4:  # DNA model
+            emission_domain = DNA
+        elif h.m == 20:   # Peptide model
+            emission_domain = AminoAcids
+        else:   # some other model
+            emission_domain = IntegerRange(0,h.m)
+        distribution = DiscreteDistribution(emission_domain)
+
+        # XXX TODO: Probably slow for large matrices (Rewrite for 0.9)
+        [A,B,pi,modelName] = h.getGHMMmatrices()
+        return  HMMFromMatrices(emission_domain, distribution, A, B, pi, hmmName=modelName)
+
+
+    def openHMMER(self, fileName):
+        """
+        Reads a file containing multiple HMMs in HMMER format, returns list of
+        HMM objects or a single HMM object.
+        """
+        if not os.path.exists(fileName):
+            raise IOError('File ' + str(fileName) + ' not found.')
+
+        modelList = []
+        string = ""
+        f = open(fileName,"r")
+
+        res = re.compile("^//")
+        stat = re.compile("^ACC\s+(\w+)")
+        for line in f.readlines():
+            string = string + line
+            m = stat.match(line)
+            if m:
+                name = m.group(1)
+                log.info( "Reading model " + str(name) + ".")
+
+            match = res.match(line)
+            if match:
+                fileLike = StringIO.StringIO(string)
+                modelList.append(self.openSingleHMMER(fileLike))
+                string = ""
+                match = None
+
+        if len(modelList) == 1:
+            return modelList[0]
+        return modelList
+
+
+    def determineHMMClass(self, fileName):
+        #
+        # smo files. Obsolete
+        #
+        file = open(fileName,'r')
+
+        hmmRe = re.compile("^HMM\s*=")
+        shmmRe = re.compile("^SHMM\s*=")
+        mvalueRe = re.compile("M\s*=\s*([0-9]+)")
+        densityvalueRe = re.compile("density\s*=\s*([0-9]+)")
+        cosvalueRe = re.compile("cos\s*=\s*([0-9]+)")
+        emission_domain = None
+
+        while 1:
+            l = file.readline()
+            if not l:
+                break
+            l = l.strip()
+            if len(l) > 0 and l[0] != '#': # Not a comment line
+                hmm = hmmRe.search(l)
+                shmm = shmmRe.search(l)
+                mvalue = mvalueRe.search(l)
+                densityvalue = densityvalueRe.search(l)
+                cosvalue = cosvalueRe.search(l)
+
+                if hmm != None:
+                    if emission_domain != None and emission_domain != 'int':
+                        log.error( "HMMOpenFactory:determineHMMClass: both HMM and SHMM? " + str(emission_domain))
+                    else:
+                        emission_domain = 'int'
+
+                if shmm != None:
+                    if emission_domain != None and emission_domain != 'double':
+                        log.error( "HMMOpenFactory:determineHMMClass: both HMM and SHMM? " + str(emission_domain))
+                    else:
+                        emission_domain = 'double'
+
+                if mvalue != None:
+                    M = int(mvalue.group(1))
+
+                if densityvalue != None:
+                    density = int(densityvalue.group(1))
+
+                if cosvalue != None:
+                    cos = int(cosvalue.group(1))
+
+        file.close()
+        if emission_domain == 'int':
+            # only integer alphabet
+            emission_domain = IntegerRange(0,M)
+            distribution = DiscreteDistribution
+            hmm_class = DiscreteEmissionHMM
+            return (hmm_class, emission_domain, distribution)
+
+        elif emission_domain == 'double':
+            # M        number of mixture components
+            # density  component type
+            # cos      number of state transition classes
+            if M == 1 and density == 0:
+                emission_domain = Float()
+                distribution = GaussianDistribution
+                hmm_class = GaussianEmissionHMM
+                return (hmm_class, emission_domain, distribution)
+
+            elif  M > 1 and density == 0:
+                emission_domain = Float()
+                distribution = GaussianMixtureDistribution
+                hmm_class = GaussianMixtureHMM
+                return (hmm_class, emission_domain, distribution)
+
+            else:
+                raise TypeError("Model type can not be determined.")
+
+        return (None, None, None)
+
+MyHMMOpenXML = MyHMMOpenFactory()
 MyHMMFromMatrices = MyHMMFromMatricesFactory()
