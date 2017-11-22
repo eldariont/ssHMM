@@ -319,8 +319,8 @@ def main(args):
     shapeNegativeFileName = options.directory + '/shapes/' + options.dataset_name + '/negative.txt'
     if options.jump_to <= 6:
         print>>sys.stderr, '###STEP 6: Calculating RNAshapes'
-        print>>sys.stderr, 'INPUT:', fastaPositiveFileName
-        print>>sys.stderr, 'OUTPUT:', shapePositiveFileName
+        print>>sys.stderr, 'INPUT:', fastaNegativeFileName
+        print>>sys.stderr, 'OUTPUT:', shapeNegativeFileName
         
         calculate_rna_shapes_from_file(shapeNegativeFileName, fastaNegativeFileName, 10)
         
@@ -341,7 +341,7 @@ def main(args):
     structuresNegativeFileName = options.directory + '/structures/' + options.dataset_name + '/negative.txt'
     if options.jump_to <= 7:
         print>>sys.stderr, '###STEP 7: Calculating RNAstructures'
-        print>>sys.stderr, 'INPUT:', fastaPositiveFileName
+        print>>sys.stderr, 'INPUT:', fastaNegativeFileName
         print>>sys.stderr, 'OUTPUT:', structuresNegativeFileName
         
         calculate_rna_structures_from_file(structuresNegativeFileName, fastaNegativeFileName)
