@@ -21,7 +21,11 @@ Below, you find an example output of ssHMM. After training on an RBP dataset, th
 ssHMM can be installed manually as a Python package or (more simply) as a Docker image. Check out our documentation: http://sshmm.readthedocs.io
 
 ### Contact
-If you experience problems or have suggestions please contact heller_d@molgen.mpg.de. Alternatively, you are welcome to create issues or pull requests on our github.com repository: http://github.com/eldariont/sshmm.
+If you experience problems or have suggestions please contact me (see below). Alternatively, you are welcome to create issues or pull requests.
+
+Email: heller_d@molgen.mpg.de
+
+Twitter: https://twitter.com/compbiod
 
 ### Citation
 
