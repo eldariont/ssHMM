@@ -31,8 +31,8 @@ def parseArguments(args):
                         help='FASTA file with RNA structures for training')
     parser.add_argument('--motif_length', '-n', type=int, default = 6,
                         help='length of the motif that shall be found (default: 6)')
-    parser.add_argument('--baum_welch', '-b', action='store_true', default = True,
-                        help='should the model be initialized with a Baum-Welch optimized sequence motif (default: yes)')
+    parser.add_argument('--random', '-r', action='store_true',
+                        help='Initialize the model randomly (default: initialize with Baum-Welch optimized sequence motif)')
     parser.add_argument('--flexibility', '-f', type=int, default = 10,
                         help='greedyness of Gibbs sampler: model parameters are sampled from among the top f configurations (default: f=10), set f to 0 in order to include all possible configurations')
     parser.add_argument('--block_size', '-s', type=int, default = 1,
@@ -66,7 +66,7 @@ def main(args):
     main_logger.info("Call: %s", " ".join(args))
     main_logger.info("Chosen options:")
     main_logger.info("Motif Length: %s", options.motif_length)
-    main_logger.info("Baum-Welch initialization: %s", "on" if options.baum_welch else "off")
+    main_logger.info("Baum-Welch initialization: %s", "off" if options.random else "on")
     main_logger.info("Flexibility: top %s configurations", options.flexibility)
     main_logger.info("Block size: %s", options.block_size)
     main_logger.info("Termination threshold: %s", options.threshold)
@@ -83,12 +83,12 @@ def main(args):
     #Initialize model
     model = SeqStructHMM(job_directory, main_logger, numbers_logger, training_sequence_container, options.motif_length,
                           options.flexibility, options.block_size)
-    if options.baum_welch:
+    if options.random:
+        model.prepare_model_randomly()
+    else:
         best_baumwelch_sequence_model = seq_hmm.find_best_baumwelch_sequence_models(options.motif_length, training_sequence_container, main_logger)
         best_viterbi_paths = best_baumwelch_sequence_model[1]
         model.prepare_model_with_viterbi(best_viterbi_paths)
-    else:
-        model.prepare_model_randomly()
     main_logger.info('Completed initialisation. Begin training..')
 
     #Train model

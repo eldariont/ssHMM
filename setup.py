@@ -4,7 +4,7 @@ from setuptools.extension import Extension
 long_description = """RNA-binding proteins (RBPs) play a vital role in the post-transcriptional control of RNAs. They are known to recognize RNA molecules by their nucleotide sequence as well as their three-dimensional structure. ssHMM is an RNA motif finder that combines a hidden Markov model (HMM) with Gibbs sampling to learn the joint sequence and structure binding preferences of RBPs from high-throughput RNA-binding experiments, such as CLIP-Seq. The model can be visualized as an intuitive graph illustrating the interplay between RNA sequence and structure."""
 
 setup(name='sshmm',
-      version='1.0.6',
+      version='1.0.7',
       description='A sequence-structure hidden Markov model for the analysis of RNA-binding protein data.',
       long_description=long_description,
       url='https://github.molgen.mpg.de/heller/ssHMM',
